@@ -1,7 +1,7 @@
 # pspline
 
 ![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/PrincetonUniversity/pspline?include_prereleases)
-![](https://github.com/transp/PrincetonUniversity/workflows/PSPLINE%20CI/badge.svg)
+![](https://github.com/PrincetonUniversity/pspline/workflows/PSPLINE%20CI/badge.svg)
 
 ## About
 
