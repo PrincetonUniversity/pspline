@@ -69,7 +69,7 @@ install:
 	@cp $(PSPDIR)/lookup_test.output $(TESTDR)
 	@cp $(EZSDIR)/ezspline_test.ref $(TESTDR)
 	@cp $(EZSDIR)/qk_pspline.output $(TESTDR)
-	@cp $(CZSDIR)/czspline_test.out $(TESTDR)
+	@cp $(CZSDIR)/czspline_test.output $(TESTDR)
 	@test ! -f $(EXELUP) || cp $(EXELUP) $(TESTDR)
 	@test ! -f $(EXEPSP) || cp $(EXEPSP) $(TESTDR)
 	@test ! -f $(EXEQKS) || cp $(EXEQKS) $(TESTDR)
