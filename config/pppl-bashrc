@@ -1,20 +1,22 @@
-module purge
+#module purge
 module load git
 
 # Specify compiler (GCC, ICC, PGC):
-export COMPILER=ICC15
+#export COMPILER=ICC15
 
-if [ $COMPILER = 'ICC' -o $COMPILER = 'ICC19' ]; then
-    module load intel/2019.u3
-elif [ $COMPILER = 'ICC15' ]; then
-    module load intel/2015.u1
-elif [ $COMPILER = 'PGC' ]; then
-    module load pgf/19.1
-elif [ $COMPILER = 'GCC6' ]; then
-    module load gcc/6.1.0
-else
-    module load gcc/9.1.0
-fi
+#if [ $COMPILER = 'ICC' -o $COMPILER = 'ICC19' ]; then
+#    module load intel/2019.u3
+#elif [ $COMPILER = 'ICC15' ]; then
+#    module load intel/2015.u1
+#elif [ $COMPILER = 'PGC' ]; then
+#    module load pgf/19.1
+#elif [ $COMPILER = 'GCC6' ]; then
+#    module load gcc/6.1.0
+#else
+#    module load gcc/9.1.0
+#fi
+
+COMPILER=$(echo $CC | awk 'BEGIN {FS = "/"} ; {print $NF}')
 
 module load szip
 module load curl
