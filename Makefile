@@ -22,18 +22,10 @@ EXEPSP := pspltest
 EXEQKS := qk_pspline
 EXEEZS := ezspline_test
 EXECZS := czspline_test
+include source_dependency.mk
 
-# Define the objects
-SRCS := $(PSPDIR)/precision_mod.f90 \
-	$(filter-out $(PSPDIR)/precision_mod.f90, $(wildcard $(PSPDIR)/*.f90))
-SRCS := $(filter-out $(PSPDIR)/$(EXELUP).f90, $(SRCS))
-SRCS := $(filter-out $(PSPDIR)/$(EXEPSP).f90, $(SRCS))
-SRCS := $(filter-out $(PSPDIR)/$(EXEQKS).f90, $(SRCS))
-SRCS += $(EZSDIR)/ezspline_mod.f90 \
-	$(filter-out $(EZSDIR)/ezspline_mod.f90, $(wildcard $(EZSDIR)/*.f90))
-SRCS := $(filter-out $(EZSDIR)/ezspline_test.f90, $(SRCS))
-SRCS += $(wildcard $(CZSDIR)/*.f90)
 OBJS := $(SRCS:%.f90=%.o)
+
 
 .PHONY: clean clobber debug install shared single uninstall
 
@@ -98,8 +90,7 @@ single: $(EXEPSP)
 single: $(EXEQKS)
 single: $(EXEEZS)
 
-$(OBJS) :
-#
+include module_dependency.mk
 %.o: %.f90
 	$(FC) -c $(FFLAGS) $< -o $@ $(FLIBS) $(FINCL)
 
