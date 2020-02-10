@@ -1,16 +1,10 @@
-module load git
+#module load git
+#export COMPILER=$(echo $CC | awk 'BEGIN {FS = "/"} ; {print $NF}')
 
-export COMPILER=$(echo $CC | awk 'BEGIN {FS = "/"} ; {print $NF}')
+module load szip curl hdf hdf5-serial netcdf-c netcdf-fortran
 
-module load szip
-module load curl
-module load hdf
-module load hdf5-serial
-module load netcdf-c
-module load netcdf-fortran
-
-if [ ! -z "$NETCDF_FORTRAN_HOME" ]; then
-   export NETCDF_FLAGS=" -D_NETCDF"
-   export L_NETCDF=" -L$NETCDF_FORTRAN_HOME/lib -lnetcdff"
-   export I_NETCDF=" -I$NETCDF_FORTRAN_HOME/include"
-fi
+#if [ ! -z "$NETCDF_FORTRAN_HOME" ]; then
+#   export NETCDF_FLAGS=" -D_NETCDF"
+#   export L_NETCDF=" -L$NETCDF_FORTRAN_HOME/lib -lnetcdff"
+#   export I_NETCDF=" -I$NETCDF_FORTRAN_HOME/include"
+#fi

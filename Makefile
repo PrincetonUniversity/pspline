@@ -1,7 +1,44 @@
 # Simple makefile to build libpspline.a or libpspline.so
 
 # Include compile options
-include Makefile.def
+SHELL:=/bin/bash
+#include ./config/pppl-bashrc
+#COMPILER=$(shell echo $${CC: -3}) 
+#include Makefile.def
+
+#MODULE_LOAD = .$MODULESHOME/init/bash && module load
+#. /usr/share/Modules/init/bash; \
+module load szip curl hdf hdf5-serial netcdf-c netcdf-fortran;
+
+
+
+ifdef NETCDF_FORTRAN_HOME
+        NETCDF_FLAGS= -D_NETCDF
+        I_NETCDF += -I$(NETCDF_FORTRAN_HOME)/include
+        L_NETCDF += -L$(NETCDF_FORTRAN_HOME)/lib -lnetcdff
+endif
+FLIBS = $(L_NETCDF)
+FINCL = $(I_NETCDF)
+
+ifneq (,$(findstring icc, $(CC)))
+        COMPILER=icc
+        FFLAGS = -cpp -O2 -stand f08 -real-size 64 -auto-scalar $(NETCDF_FLAGS)
+        LDFLAGS = -cpp
+        DFFLAGS = -g -traceback -check all -warn all
+        SFFLAGS = -fpic
+        SLDFLAGS = -shared
+        CXXFLAGS = -O2 -std=c++11 $(NETCDF_FLAGS)
+        CXXLIBS = -lifcore
+else
+        COMPILER=gfortran
+        FFLAGS = -cpp -dM -O2 -std=f2008 -fdefault-real-8 -ffpe-trap=invalid,zero,overflow $(NETCDF_FLAGS)
+        LDFLAGS = -cpp
+        DFFLAGS = -Og -Wall
+        SFFLAGS = -fpic
+        SLDFLAGS = -shared
+        CXXFLAGS = -O2 -std=c++11 $(NETCDF_FLAGS)
+        CXXLIBS = -lstdc++ -lgfortran
+endif
 
 # Define directories and library names
 SRCDIR := $(shell pwd)
@@ -29,7 +66,7 @@ OBJS := $(SRCS:%.f90=%.o)
 
 .PHONY: clean clobber debug install shared single uninstall
 
-all:	$(LIBAR) $(EXELUP) $(EXEPSP) $(EXEQKS) $(EXEEZS) $(EXECZS)
+all:	$(LIBAR) $(EXELUP) $(EXEPSP) $(EXEQKS) $(EXEEZS) $(EXECZS) $(info $$compiler is [${COMPILER}])
 
 $(LIBAR): $(OBJS)
 	@ar r $@ $(OBJS)
