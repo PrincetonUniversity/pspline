@@ -1,7 +1,48 @@
 # Simple makefile to build libpspline.a or libpspline.so
 
 # Include compile options
-include Makefile.def
+
+SHELL:=/bin/bash
+
+FLIBS =
+FINCL =
+
+ifdef NETCDF_FORTRAN_HOME
+        NETCDF_FLAGS= -D_NETCDF
+        FINCL += -I$(NETCDF_FORTRAN_HOME)/include
+        FLIBS += -L$(NETCDF_FORTRAN_HOME)/lib -lnetcdff
+endif
+
+ifneq (,$(findstring icc, $(CC)))
+        COMPILER=icc
+        FFLAGS = -cpp -O2 -stand f08 -real-size 64 -auto-scalar $(NETCDF_FLAGS)
+        LDFLAGS = -cpp
+        DFFLAGS = -g -traceback -check all -warn all
+        SFFLAGS = -fpic
+        SLDFLAGS = -shared
+        CXXFLAGS = -O2 -std=c++11 $(NETCDF_FLAGS)
+        CXXLIBS = -lifcore
+
+else ifeq ($(COMPILER),pgcc-llvm)
+        FFLAGS = -cpp -fast -r8 $(NETCDF_FLAGS) -D_PGC
+        LDFLAGS = -cpp
+        DFFLAGS = -g -traceback -Mbounds
+        SFFLAGS = -fpic
+        SLDFLAGS = -shared
+        CXXFLAGS = -O2 -mp -std=c++11 $(NETCDF_FLAGS)
+        CXXLIBS = -lstdc++ -lgfortran
+        CXXLDFLAGS =
+
+else
+        COMPILER=gfortran
+        FFLAGS = -cpp -dM -O2 -std=f2008 -fdefault-real-8 -ffpe-trap=invalid,zero,overflow $(NETCDF_FLAGS)
+        LDFLAGS = -cpp
+        DFFLAGS = -Og -Wall
+        SFFLAGS = -fpic
+        SLDFLAGS = -shared
+        CXXFLAGS = -O2 -std=c++11 $(NETCDF_FLAGS)
+        CXXLIBS = -lstdc++ -lgfortran
+endif
 
 # Define directories and library names
 SRCDIR := $(shell pwd)
@@ -23,17 +64,9 @@ EXEQKS := qk_pspline
 EXEEZS := ezspline_test
 EXECZS := czspline_test
 
-# Define the objects
-SRCS := $(PSPDIR)/precision_mod.f90 \
-	$(filter-out $(PSPDIR)/precision_mod.f90, $(wildcard $(PSPDIR)/*.f90))
-SRCS := $(filter-out $(PSPDIR)/$(EXELUP).f90, $(SRCS))
-SRCS := $(filter-out $(PSPDIR)/$(EXEPSP).f90, $(SRCS))
-SRCS := $(filter-out $(PSPDIR)/$(EXEQKS).f90, $(SRCS))
-SRCS += $(EZSDIR)/ezspline_mod.f90 \
-	$(filter-out $(EZSDIR)/ezspline_mod.f90, $(wildcard $(EZSDIR)/*.f90))
-SRCS := $(filter-out $(EZSDIR)/ezspline_test.f90, $(SRCS))
-SRCS += $(wildcard $(CZSDIR)/*.f90)
+include source_dependency.mk
 OBJS := $(SRCS:%.f90=%.o)
+
 
 .PHONY: clean clobber debug install shared single uninstall
 
@@ -98,8 +131,7 @@ single: $(EXEPSP)
 single: $(EXEQKS)
 single: $(EXEEZS)
 
-$(OBJS) :
-#
+include module_dependency.mk
 %.o: %.f90
 	$(FC) -c $(FFLAGS) $< -o $@ $(FLIBS) $(FINCL)
 
