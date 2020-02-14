@@ -4,13 +4,14 @@
 
 SHELL:=/bin/bash
 
+FLIBS =
+FINCL =
+
 ifdef NETCDF_FORTRAN_HOME
         NETCDF_FLAGS= -D_NETCDF
-        I_NETCDF += -I$(NETCDF_FORTRAN_HOME)/include
-        L_NETCDF += -L$(NETCDF_FORTRAN_HOME)/lib -lnetcdff
+        FINCL += -I$(NETCDF_FORTRAN_HOME)/include
+        FLIBS += -L$(NETCDF_FORTRAN_HOME)/lib -lnetcdff
 endif
-FLIBS = $(L_NETCDF)
-FINCL = $(I_NETCDF)
 
 ifneq (,$(findstring icc, $(CC)))
         COMPILER=icc
@@ -62,8 +63,8 @@ EXEPSP := pspltest
 EXEQKS := qk_pspline
 EXEEZS := ezspline_test
 EXECZS := czspline_test
-include source_dependency.mk
 
+include source_dependency.mk
 OBJS := $(SRCS:%.f90=%.o)
 
 
