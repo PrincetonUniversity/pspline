@@ -20,7 +20,7 @@ transp_support@pppl.gov
 ## Contents
 
 Makefile:      GNU make should be used
-Makefile.def   Definitions for the Makefile
+
 
 Source directories for:
    pspline     The original pspline F77 routines, reformatted into Fortran 90
@@ -40,13 +40,15 @@ sample-bashrc - basic example configuration file
 
 ## Build
 
-make             -- will build libpspline.a and the test programs
+Load your compiler module such as module load intel, then source the ./config/pppl-bashrc file which will load additional module. Customize the bashrc file to your needs.
+
+make             -- will build libpspline.a and the test programs, parallel build make -j<int> is also supported where <int> is the number of parallel processes
 make debug       -- will build a debug version of libpspline.a
 make shared      -- will build a shared library, libpspline.so
 make clean       -- will remove the compiled objects and modules
 make clobber     -- will run clean and remove the libs and test programs
 
-The Makefile.def is set-up for compiling with the GNU, Intel, and Portland group compilers.
+
 
 
 ## Install
