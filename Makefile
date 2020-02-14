@@ -1,16 +1,8 @@
 # Simple makefile to build libpspline.a or libpspline.so
 
 # Include compile options
+
 SHELL:=/bin/bash
-#include ./config/pppl-bashrc
-#COMPILER=$(shell echo $${CC: -3}) 
-#include Makefile.def
-
-#MODULE_LOAD = .$MODULESHOME/init/bash && module load
-#. /usr/share/Modules/init/bash; \
-module load szip curl hdf hdf5-serial netcdf-c netcdf-fortran;
-
-
 
 ifdef NETCDF_FORTRAN_HOME
         NETCDF_FLAGS= -D_NETCDF
