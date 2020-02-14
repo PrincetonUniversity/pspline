@@ -42,7 +42,7 @@ sample-bashrc - basic example configuration file
 
 Load your compiler module such as module load intel, then source the ./config/pppl-bashrc file which will load additional module. Customize the bashrc file to your needs.
 
-make             -- will build libpspline.a and the test programs, parallel build make -j<int> is also supported where <int> is the number of parallel processes
+make             -- will build libpspline.a and the test programs, parallel build make -j option is also supported 
 make debug       -- will build a debug version of libpspline.a
 make shared      -- will build a shared library, libpspline.so
 make clean       -- will remove the compiled objects and modules
