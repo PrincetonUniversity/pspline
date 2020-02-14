@@ -21,6 +21,17 @@ ifneq (,$(findstring icc, $(CC)))
         SLDFLAGS = -shared
         CXXFLAGS = -O2 -std=c++11 $(NETCDF_FLAGS)
         CXXLIBS = -lifcore
+
+else ifeq ($(COMPILER),pgcc-llvm)
+        FFLAGS = -cpp -fast -r8 $(NETCDF_FLAGS) -D_PGC
+        LDFLAGS = -cpp
+        DFFLAGS = -g -traceback -Mbounds
+        SFFLAGS = -fpic
+        SLDFLAGS = -shared
+        CXXFLAGS = -O2 -mp -std=c++11 $(NETCDF_FLAGS)
+        CXXLIBS = -lstdc++ -lgfortran
+        CXXLDFLAGS =
+
 else
         COMPILER=gfortran
         FFLAGS = -cpp -dM -O2 -std=f2008 -fdefault-real-8 -ffpe-trap=invalid,zero,overflow $(NETCDF_FLAGS)
@@ -58,7 +69,7 @@ OBJS := $(SRCS:%.f90=%.o)
 
 .PHONY: clean clobber debug install shared single uninstall
 
-all:	$(LIBAR) $(EXELUP) $(EXEPSP) $(EXEQKS) $(EXEEZS) $(EXECZS) $(info $$compiler is [${COMPILER}])
+all:	$(LIBAR) $(EXELUP) $(EXEPSP) $(EXEQKS) $(EXEEZS) $(EXECZS)
 
 $(LIBAR): $(OBJS)
 	@ar r $@ $(OBJS)
