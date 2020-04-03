@@ -7,10 +7,11 @@ SHELL:=/bin/bash
 FLIBS =
 FINCL =
 
-ifdef NETCDF_FORTRAN_HOME
-        NETCDF_FLAGS= -D_NETCDF
-        FINCL += -I$(NETCDF_FORTRAN_HOME)/include
-        FLIBS += -L$(NETCDF_FORTRAN_HOME)/lib -lnetcdff
+ifneq (,$(shell which nf-config))
+        NETCDF_FORTRAN_HOME = `nf-config --prefix`
+        NETCDF_FLAGS = -D_NETCDF `nf-config --fflags`
+        FINCL += -I`nf-config --includedir`
+        FLIBS += `nf-config --flibs`
 endif
 
 ifneq (,$(findstring icc, $(CC)))
