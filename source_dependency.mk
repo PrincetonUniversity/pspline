@@ -8,13 +8,13 @@ SRCS = ./pspline/precision_mod.f90 ./ezspline/ezspline_mod.f90 ./czspline/czspli
        ./pspline/gridherm2.f90 ./pspline/gridherm3.f90 ./pspline/gridintrp2d.f90 ./pspline/gridintrp3d.f90 \
        ./pspline/gridpc1.f90 ./pspline/gridpc2.f90 ./pspline/gridpc3.f90 ./pspline/gridspline.f90 \
        ./pspline/gridtricub.f90 ./pspline/herm1ev.f90 ./pspline/herm2ev.f90 ./pspline/herm3ev.f90 \
-       ./pspline/ibc_ck.f90 ./pspline/lookup_test.f90 ./pspline/mkbicub.f90 ./pspline/mkbicubw.f90 \
+       ./pspline/ibc_ck.f90 ./pspline/mkbicub.f90 ./pspline/mkbicubw.f90 \
        ./pspline/mkherm1.f90 ./pspline/mkherm2.f90 ./pspline/mkherm3.f90 ./pspline/mkintrp2d.f90 \
        ./pspline/mkintrp3d.f90 ./pspline/mkspl2p.f90 ./pspline/mkspl2pb.f90 ./pspline/mkspl2z.f90 \
        ./pspline/mkspl2zb.f90 ./pspline/mkspl3pb.f90 ./pspline/mkspl3zb.f90 ./pspline/mkspline.f90 \
        ./pspline/mktricub.f90 ./pspline/mktricubw.f90 ./pspline/nspline.f90 ./pspline/pc1ev.f90 \
        ./pspline/pc2ev.f90 ./pspline/pc3ev.f90 ./pspline/psp_tolsum.f90 ./pspline/pspline.f90 \
-       ./pspline/pspltest.f90 ./pspline/pspltsub.f90 ./pspline/seval.f90 ./pspline/seval2.f90 \
+       ./pspline/pspltsub.f90 ./pspline/seval.f90 ./pspline/seval2.f90 \
        ./pspline/seval3.f90 ./pspline/speval.f90 ./pspline/spgrid.f90 ./pspline/splaan.f90 \
        ./pspline/splbrk.f90 ./pspline/spleen.f90 ./pspline/splinck.f90 ./pspline/spline.f90 \
        ./pspline/spvec.f90 ./pspline/tcspeval.f90 ./pspline/tcspgrid.f90 ./pspline/tcspline.f90 \
@@ -23,13 +23,12 @@ SRCS = ./pspline/precision_mod.f90 ./ezspline/ezspline_mod.f90 ./czspline/czspli
        ./pspline/vecherm1.f90 ./pspline/vecherm2.f90 ./pspline/vecherm3.f90 ./pspline/vecin2d_argchk.f90 \
        ./pspline/vecin3d_argchk.f90 ./pspline/vecintrp2d.f90 ./pspline/vecintrp3d.f90 ./pspline/vecpc1.f90 \
        ./pspline/vecpc2.f90 ./pspline/vecpc3.f90 ./pspline/vecspline.f90 ./pspline/vectricub.f90 \
-       ./pspline/xlookup.f90 ./pspline/zonfind.f90 ./ezspline/qk_pspline.f90 \
+       ./pspline/xlookup.f90 ./pspline/zonfind.f90 \
        ./ezspline/ezhybrid_init.f90 \
        ./ezspline/ezhybrid_initx.f90 ./ezspline/ezlinear_init.f90 ./ezspline/ezspline_2netcdf.f90 \
        ./ezspline/ezspline_cdfget3.f90 ./ezspline/ezspline_cdfput3.f90 ./ezspline/ezspline_cinterp.f90 \
        ./ezspline/ezspline_derivative.f90 ./ezspline/ezspline_free.f90 ./ezspline/ezspline_gradient.f90 \
        ./ezspline/ezspline_init.f90 ./ezspline/ezspline_interp.f90 ./ezspline/ezspline_isgridregular.f90 \
        ./ezspline/ezspline_isindomain.f90 ./ezspline/ezspline_load.f90 ./ezspline/ezspline_modulo.f90 \
-       ./ezspline/ezspline_save.f90 ./ezspline/ezspline_setup.f90 ./ezspline/ezspline_setupx.f90 \
-       ./ezspline/ezspline_test.f90
+       ./ezspline/ezspline_save.f90 ./ezspline/ezspline_setup.f90 ./ezspline/ezspline_setupx.f90
 
