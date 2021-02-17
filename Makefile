@@ -15,7 +15,6 @@ ifneq (,$(shell which nf-config))
 endif
 
 ifneq (,$(findstring icc, $(CC)))
-        COMPILER=icc
         FFLAGS = -cpp -O2 -stand f08 -real-size 64 -auto-scalar $(NETCDF_FLAGS)
         LDFLAGS = -cpp
         DFFLAGS = -g -traceback -check all -warn all
@@ -24,18 +23,19 @@ ifneq (,$(findstring icc, $(CC)))
         CXXFLAGS = -O2 -std=c++11 $(NETCDF_FLAGS)
         CXXLIBS = -lifcore
 
-else ifeq ($(COMPILER),pgcc-llvm)
+else ifneq (,$(findstring pgcc, $(CC)))
         FFLAGS = -cpp -fast -r8 $(NETCDF_FLAGS) -D_PGC
         LDFLAGS = -cpp
         DFFLAGS = -g -traceback -Mbounds
         SFFLAGS = -fpic
         SLDFLAGS = -shared
         CXXFLAGS = -O2 -mp -std=c++11 $(NETCDF_FLAGS)
-        CXXLIBS = -lstdc++ -lgfortran
+        CXXLIBS = -lstdc++ -lpgf90 -lpgf90rtl
         CXXLDFLAGS =
 
 else
-        COMPILER=gfortran
+        FC = gfortran
+	CC = gcc
         FFLAGS = -cpp -dM -O2 -std=f2008 -fdefault-real-8 -ffpe-trap=invalid,zero,overflow $(NETCDF_FLAGS)
         LDFLAGS = -cpp
         DFFLAGS = -Og -Wall
