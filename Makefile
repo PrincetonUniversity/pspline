@@ -11,6 +11,7 @@ ifneq (,$(shell which nf-config))
         NETCDF_FORTRAN_HOME = `nf-config --prefix`
         NETCDF_FLAGS = -D_NETCDF `nf-config --fflags`
         FINCL += -I`nf-config --includedir`
+        FLIBS += `nc-config --libs`
         FLIBS += `nf-config --flibs`
 endif
 
@@ -24,14 +25,13 @@ ifneq (,$(findstring icc, $(CC)))
         CXXLIBS = -lifcore
 
 else ifneq (,$(findstring pgcc, $(CC)))
-        FFLAGS = -cpp -fast -r8 $(NETCDF_FLAGS) -D_PGC
+        FFLAGS = -cpp -fast -r8 $(NETCDF_FLAGS)
         LDFLAGS = -cpp
         DFFLAGS = -g -traceback -Mbounds
         SFFLAGS = -fpic
         SLDFLAGS = -shared
         CXXFLAGS = -O2 -mp -std=c++11 $(NETCDF_FLAGS)
         CXXLIBS = -lstdc++ -lpgf90 -lpgf90rtl
-        CXXLDFLAGS =
 
 else
         FC = gfortran
@@ -134,7 +134,7 @@ single: $(EXEEZS)
 
 include module_dependency.mk
 %.o: %.f90
-	$(FC) -c $(FFLAGS) $< -o $@ $(FLIBS) $(FINCL)
+	$(FC) -c $(FFLAGS) $< -o $@ $(FINCL)
 
 uninstall:
 	@rm -rf $(PREFIX)
