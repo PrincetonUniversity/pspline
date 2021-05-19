@@ -15,7 +15,6 @@ jobs:
         sudo apt-get -y install libnetcdf-dev libnetcdff-dev
     - name: build
       run: |
-        export COMPILER=GCC
         export FC=gfortran
         export CXX=g++
         export NETCDF_FLAGS=" -D_NETCDF"
