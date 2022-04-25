@@ -1,8 +1,8 @@
 ./pspline/precision_mod.o : ./pspline/precision_mod.f90
-./ezspline/ezspline_mod.o : ./ezspline/ezspline_mod.f90 ./pspline/precision_mod.f90
-./czspline/czspline_1d.o : ./czspline/czspline_1d.f90 ./ezspline/ezspline_mod.o ./pspline/precision_mod.f90
-./czspline/czspline_2d.o : ./czspline/czspline_2d.f90 ./ezspline/ezspline_mod.o ./pspline/precision_mod.f90
-./czspline/czspline_3d.o : ./czspline/czspline_3d.f90 ./ezspline/ezspline_mod.o ./pspline/precision_mod.f90
+./ezspline/ezspline_mod.o : ./ezspline/ezspline_mod.f90 ./pspline/precision_mod.o
+./czspline/czspline_1d.o : ./czspline/czspline_1d.f90 ./ezspline/ezspline_mod.o ./pspline/precision_mod.o
+./czspline/czspline_2d.o : ./czspline/czspline_2d.f90 ./ezspline/ezspline_mod.o ./pspline/precision_mod.o
+./czspline/czspline_3d.o : ./czspline/czspline_3d.f90 ./ezspline/ezspline_mod.o ./pspline/precision_mod.o
 ./pspline/akherm1.o : ./pspline/akherm1.f90 ./pspline/precision_mod.o 
 ./pspline/akherm2.o : ./pspline/akherm2.f90 ./pspline/precision_mod.o 
 ./pspline/akherm3.o : ./pspline/akherm3.f90 ./pspline/precision_mod.o 
