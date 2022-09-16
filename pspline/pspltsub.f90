@@ -1341,7 +1341,7 @@ subroutine smalltest(zctrl)
   real(fp) :: xx1(3),xxpkg(3,4)
   real(fp) :: xxx1(4),xxxpkg(4,4)
   real(fp) :: s1da(2,2),s1db(2,2),h1da(2,2)
-  real(fp) :: s1dc(2,3),s1dd(2,4),szp40
+  real(fp) :: s1dc(2,3),s1dd(2,4),szp40(1)
   real(fp) :: test,zbc1,zbc2
   real(fp) :: feval0(5),feval1(5),feval2(5)
   real(fp) :: feval0p(5),feval1p(5),feval2p(5)
@@ -1354,7 +1354,7 @@ subroutine smalltest(zctrl)
   integer, dimension(3) :: ict21 = (/ 0, 0, 1 /)
 
   real(fp), parameter :: ZERO = 0.0_fp
-  real(fp), parameter :: ZP40 = 0.40_fp
+  real(fp), parameter :: ZP40(1) = 0.40_fp
   real(fp), parameter :: HALF = 0.5_fp
   real(fp), parameter :: ONE = 1.0_fp
   real(fp), parameter :: TWO = 2.0_fp
@@ -1378,12 +1378,12 @@ subroutine smalltest(zctrl)
 
   !  3 pt grid
   xx1(1) = ZERO
-  xx1(2) = ZP40
+  xx1(2) = ZP40(1)
   xx1(3) = ONE
 
   !  4 pt grid
   xxx1(1) = ZERO
-  xxx1(2) = ZP40
+  xxx1(2) = ZP40(1)
   xxx1(3) = HALF
   xxx1(4) = ONE
 
@@ -1462,8 +1462,8 @@ subroutine smalltest(zctrl)
      call ckerr('vecspline#0')
      if(ier.ne.0) return
 
-     s1dc(1,2) = szp40
-     s1dd(1,2) = szp40
+     s1dc(1,2) = szp40(1)
+     s1dd(1,2) = szp40(1)
 
      call vecspline(ict01,5,xeval,5,feval0,2,xpkg,s1da,iwarn,ier)
      call ckerr('vecspline#1')
