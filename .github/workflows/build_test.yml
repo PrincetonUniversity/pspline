@@ -1,14 +1,12 @@
-name: PSPLINE CI
+name: Build and Test
 
 on: [push]
 
 jobs:
-  build:
-
+  build_and_test:
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - name: configure
       run: |
         sudo apt-get -y install gfortran
