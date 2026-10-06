@@ -1,0 +1,318 @@
+# Simple makefile to build libpspline.a or libpspline.so
+# Ranger GCC toolset 13.x version
+
+SHELL := /bin/bash
+
+FC  ?= gfortran
+CC  ?= gcc
+CXX ?= g++
+
+AR      := ar
+ARFLAGS := rcs
+
+
+# ----------------------------------------------------------------------
+# NetCDF / HDF5 configuration
+# ----------------------------------------------------------------------
+
+FLIBS =
+FINCL =
+
+NETCDF_MODDIR ?= /usr/lib64/gfortran/modules
+NETCDF_F_HOME ?= /usr
+NETCDF_C_HOME ?= /usr
+HDF5_HOME     ?= /usr
+
+NETCDF_FLAGS = -D_NETCDF
+
+FINCL += -I$(NETCDF_MODDIR) \
+         -I$(NETCDF_F_HOME)/include \
+         -I$(NETCDF_C_HOME)/include \
+         -I$(HDF5_HOME)/include
+
+FLIBS += -Wl,-rpath,$(NETCDF_F_HOME)/lib64 \
+         -L$(NETCDF_F_HOME)/lib64 -lnetcdff \
+         -Wl,-rpath,$(NETCDF_C_HOME)/lib64 \
+         -L$(NETCDF_C_HOME)/lib64 -lnetcdf \
+         -Wl,-rpath,$(HDF5_HOME)/lib64 \
+         -L$(HDF5_HOME)/lib64 \
+         -lhdf5_fortran \
+         -lhdf5hl_fortran \
+         -lhdf5_hl \
+         -lhdf5
+
+ifdef GCC_ROOT
+  FLIBS += -Wl,-rpath,$(GCC_ROOT)/lib64 \
+           -L$(GCC_ROOT)/lib64
+endif
+
+ifdef FLIBROOT
+  FLIBS += -Wl,-rpath,$(FLIBROOT) \
+           -L$(FLIBROOT) \
+           -lgfortran \
+           -lstdc++ \
+           -lgcc_s
+endif
+
+
+# ----------------------------------------------------------------------
+# Compiler flags
+# ----------------------------------------------------------------------
+
+FFLAGS = -cpp \
+         -O2 \
+         -std=f2008 \
+         -fdefault-real-8 \
+         -fallow-argument-mismatch \
+         -fallow-invalid-boz \
+         -fno-range-check \
+         -fdollar-ok \
+         $(NETCDF_FLAGS)
+
+LDFLAGS = -cpp
+
+DFFLAGS = -Og \
+          -Wall \
+          -fbacktrace \
+          -fcheck=all \
+          -ffpe-trap=invalid,zero,overflow
+
+SFFLAGS  = -fPIC
+SLDFLAGS = -shared
+
+CXXFLAGS = -O2 -std=c++11 $(NETCDF_FLAGS)
+CXXLIBS  = -lstdc++ -lgfortran
+
+
+# ----------------------------------------------------------------------
+# Directories
+# ----------------------------------------------------------------------
+
+SRCDIR := $(shell pwd)
+
+PSPDIR := $(SRCDIR)/pspline
+EZSDIR := $(SRCDIR)/ezspline
+CZSDIR := $(SRCDIR)/czspline
+
+PREFIX ?= $(SRCDIR)/build
+
+LIBDIR := $(PREFIX)/lib
+INCDIR := $(PREFIX)/include
+TESTDR := $(PREFIX)/test
+
+
+# ----------------------------------------------------------------------
+# Libraries
+# ----------------------------------------------------------------------
+
+LIBAR := libpspline.a
+LIBSO := libpspline.so
+
+
+# ----------------------------------------------------------------------
+# Test executables
+# ----------------------------------------------------------------------
+
+EXELUP := lookup_test
+EXEPSP := pspltest
+EXEQKS := qk_pspline
+EXEEZS := ezspline_test
+EXECZS := czspline_test
+
+
+# ----------------------------------------------------------------------
+# Sources and objects
+# ----------------------------------------------------------------------
+
+include source_dependency.mk
+
+# Normal objects for static library
+OBJS := $(SRCS:%.f90=%.o)
+
+# Separate PIC objects for shared library
+PICOBJS := $(SRCS:%.f90=%.pic.o)
+
+
+# ----------------------------------------------------------------------
+# Targets
+# ----------------------------------------------------------------------
+
+.PHONY: all clean clobber debug install shared single uninstall
+
+
+# ----------------------------------------------------------------------
+# Default static build
+# ----------------------------------------------------------------------
+
+all: $(LIBAR) $(EXELUP) $(EXEPSP) $(EXEQKS) $(EXEEZS) $(EXECZS)
+
+
+# ----------------------------------------------------------------------
+# Static library
+# ----------------------------------------------------------------------
+
+$(LIBAR): $(OBJS)
+	@echo "Building static library $(LIBAR)"
+	$(AR) $(ARFLAGS) $@ $(OBJS)
+
+
+# ----------------------------------------------------------------------
+# Shared library
+# ----------------------------------------------------------------------
+
+shared: $(LIBSO)
+
+$(LIBSO): $(PICOBJS)
+	@echo "Building shared library $(LIBSO)"
+	$(FC) $(SLDFLAGS) \
+		-o $(LIBSO) \
+		$(PICOBJS) \
+		$(FLIBS) \
+		$(CXXLIBS)
+
+
+# ----------------------------------------------------------------------
+# Test executables
+# ----------------------------------------------------------------------
+
+$(EXELUP): $(LIBAR)
+	$(FC) $(FFLAGS) \
+		$(PSPDIR)/$@.f90 \
+		-o $@ \
+		-L$(SRCDIR) \
+		-lpspline \
+		$(FLIBS)
+
+$(EXEPSP): $(LIBAR)
+	$(FC) $(FFLAGS) \
+		$(PSPDIR)/$@.f90 \
+		-o $@ \
+		-L$(SRCDIR) \
+		-lpspline \
+		$(FLIBS)
+
+$(EXEQKS): $(LIBAR)
+	$(FC) $(FFLAGS) \
+		$(EZSDIR)/$@.f90 \
+		-o $@ \
+		-L$(SRCDIR) \
+		-lpspline \
+		$(FLIBS)
+
+$(EXEEZS): $(LIBAR)
+	$(FC) $(FFLAGS) \
+		$(EZSDIR)/$@.f90 \
+		-o $@ \
+		-L$(SRCDIR) \
+		-lpspline \
+		$(FLIBS)
+
+$(EXECZS): $(LIBAR)
+	$(CXX) $(CXXFLAGS) \
+		$(CZSDIR)/$@.cc \
+		-o $@ \
+		-L$(SRCDIR) \
+		-lpspline \
+		$(CXXLIBS) \
+		$(FLIBS)
+
+
+# ----------------------------------------------------------------------
+# Debug build
+# ----------------------------------------------------------------------
+
+debug: FFLAGS += $(DFFLAGS)
+debug: all
+
+
+# ----------------------------------------------------------------------
+# Single precision build
+# ----------------------------------------------------------------------
+
+single: FFLAGS += -D_SINGLE_PRECISION
+single: LDFLAGS += -D_SINGLE_PRECISION
+single: all
+
+
+# ----------------------------------------------------------------------
+# Module dependencies
+# ----------------------------------------------------------------------
+
+include module_dependency.mk
+
+
+# ----------------------------------------------------------------------
+# Normal object compilation
+# ----------------------------------------------------------------------
+
+%.o: %.f90
+	$(FC) -c $(FFLAGS) $< -o $@ $(FINCL)
+
+
+# ----------------------------------------------------------------------
+# PIC object compilation for shared library
+# ----------------------------------------------------------------------
+
+%.pic.o: %.f90
+	$(FC) -c $(FFLAGS) $(SFFLAGS) $< -o $@ $(FINCL)
+
+
+# ----------------------------------------------------------------------
+# Install
+# ----------------------------------------------------------------------
+
+install:
+	@test -d $(LIBDIR) || mkdir -p $(LIBDIR)
+	@test -d $(INCDIR) || mkdir -p $(INCDIR)
+	@test -d $(TESTDR) || mkdir -p $(TESTDR)
+
+	cp *.mod $(INCDIR)
+	cp $(CZSDIR)/czspline_capi.h $(INCDIR)
+
+	@test ! -f $(LIBAR) || cp $(LIBAR) $(LIBDIR)
+	@test ! -f $(LIBSO) || cp $(LIBSO) $(LIBDIR)
+
+	cp $(PSPDIR)/pspltest.output $(TESTDR)
+	cp $(PSPDIR)/lookup_test.output $(TESTDR)
+	cp $(EZSDIR)/ezspline_test.ref $(TESTDR)
+	cp $(EZSDIR)/qk_pspline.output $(TESTDR)
+	cp $(CZSDIR)/czspline_test.output $(TESTDR)
+
+	@test ! -f $(EXELUP) || cp $(EXELUP) $(TESTDR)
+	@test ! -f $(EXEPSP) || cp $(EXEPSP) $(TESTDR)
+	@test ! -f $(EXEQKS) || cp $(EXEQKS) $(TESTDR)
+	@test ! -f $(EXEEZS) || cp $(EXEEZS) $(TESTDR)
+	@test ! -f $(EXECZS) || cp $(EXECZS) $(TESTDR)
+
+
+# ----------------------------------------------------------------------
+# Uninstall
+# ----------------------------------------------------------------------
+
+uninstall:
+	rm -rf $(PREFIX)
+
+
+# ----------------------------------------------------------------------
+# Clean
+# ----------------------------------------------------------------------
+
+clean:
+	rm -f *~
+	rm -f $(PSPDIR)/*~
+	rm -f $(EZSDIR)/*~
+	rm -f $(CZSDIR)/*~
+
+	rm -f $(OBJS)
+	rm -f $(PICOBJS)
+
+	rm -f *.mod
+
+
+# ----------------------------------------------------------------------
+# Full clean
+# ----------------------------------------------------------------------
+
+clobber: clean
+	rm -f $(LIBAR) $(LIBSO)
+	rm -f $(EXELUP) $(EXEPSP) $(EXEQKS) $(EXEEZS) $(EXECZS)

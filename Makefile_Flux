@@ -1,0 +1,600 @@
+# ---------------------------------------------------------------------------
+# Makefile: PSPLINE
+#
+# Builds:
+#   libpspline.a
+#   libpspline.so   when MAKE_SO=1
+#
+# Static build:
+#     make
+#
+# Static + shared build:
+#     make MAKE_SO=1
+#
+# Static + shared build and install:
+#     make MAKE_SO=1 install
+#
+# Debug build:
+#     make clean
+#     make debug
+#
+# Debug static + shared build:
+#     make clean
+#     make MAKE_SO=1 debug
+# ---------------------------------------------------------------------------
+
+SHELL := /bin/bash
+
+
+# ---------------------------------------------------------------------------
+# Build options
+# ---------------------------------------------------------------------------
+
+MAKE_SO ?= 0
+
+FLIBS :=
+FINCL :=
+
+
+# ---------------------------------------------------------------------------
+# NetCDF
+#
+# Flux environment must define:
+#   NETCDF_F_HOME
+#   NETCDF_C_HOME
+# ---------------------------------------------------------------------------
+
+ifneq ($(strip $(NETCDF_F_HOME)),)
+ifneq ($(strip $(NETCDF_C_HOME)),)
+
+	NETCDF_FLAGS := -D_NETCDF
+
+	FINCL += -I$(NETCDF_F_HOME)/include
+	FINCL += -I$(NETCDF_C_HOME)/include
+
+	FLIBS += -L$(NETCDF_F_HOME)/lib -lnetcdff
+	FLIBS += -L$(NETCDF_C_HOME)/lib64 -lnetcdf
+
+else
+	$(error NETCDF_C_HOME is not defined. Source the Flux environment first)
+endif
+else
+	$(error NETCDF_F_HOME is not defined. Source the Flux environment first)
+endif
+
+
+# ---------------------------------------------------------------------------
+# Compiler options
+# ---------------------------------------------------------------------------
+
+
+# ===========================================================================
+# Intel
+# ===========================================================================
+
+ifneq (,$(findstring icc,$(CC)))
+
+	FFLAGS_OPT := \
+		-cpp \
+		-O2 \
+		-stand f08 \
+		-real-size 64 \
+		-auto-scalar \
+		$(NETCDF_FLAGS)
+
+	FFLAGS_DBG := \
+		-cpp \
+		-g \
+		-O0 \
+		-stand f08 \
+		-real-size 64 \
+		-auto-scalar \
+		-traceback \
+		-check all \
+		-warn all \
+		$(NETCDF_FLAGS)
+
+	CXXFLAGS_OPT := \
+		-O2 \
+		-std=c++11 \
+		$(NETCDF_FLAGS)
+
+	CXXFLAGS_DBG := \
+		-g \
+		-O0 \
+		-std=c++11 \
+		$(NETCDF_FLAGS)
+
+	LDFLAGS := -cpp
+
+	SFFLAGS := -fPIC
+	SLDFLAGS := -shared
+
+	CXXLIBS := -lifcore
+
+
+# ===========================================================================
+# PGI / NVIDIA
+# ===========================================================================
+
+else ifneq (,$(findstring pgcc,$(CC)))
+
+	FFLAGS_OPT := \
+		-cpp \
+		-fast \
+		-r8 \
+		$(NETCDF_FLAGS)
+
+	FFLAGS_DBG := \
+		-cpp \
+		-g \
+		-O0 \
+		-r8 \
+		-traceback \
+		-Mbounds \
+		$(NETCDF_FLAGS)
+
+	CXXFLAGS_OPT := \
+		-O2 \
+		-mp \
+		-std=c++11 \
+		$(NETCDF_FLAGS)
+
+	CXXFLAGS_DBG := \
+		-g \
+		-O0 \
+		-mp \
+		-std=c++11 \
+		$(NETCDF_FLAGS)
+
+	LDFLAGS := -cpp
+
+	SFFLAGS := -fPIC
+	SLDFLAGS := -shared
+
+	CXXLIBS := -lstdc++ -lpgf90 -lpgf90rtl
+
+
+# ===========================================================================
+# GCC / PPPL Flux
+#
+# Flux compute nodes use AMD Zen 4 processors.
+#
+# Production configuration:
+#
+#   -g
+#       Retain debugging information.  This is useful for backtraces and
+#       does not disable optimization.
+#
+#   -O2
+#       Production optimization level.  This is a conservative choice for
+#       numerical/physics code.
+#
+#   -march=znver4
+#       Generate and tune code for AMD Zen 4 processors used on Flux.
+#
+#   -std=f2008
+#       Use the Fortran 2008 language standard.
+#
+#   -fdefault-real-8
+#       Preserve the PSPLINE double-precision default-real configuration.
+#
+# Debug configuration additionally enables:
+#
+#   -O0
+#   -ffpe-trap=invalid,zero,overflow
+#   -fcheck=all
+#   -fbacktrace
+#   -Wall
+#
+# Do not use -ffast-math globally for PSPLINE.  It changes floating-point
+# semantics and should only be considered after numerical validation.
+# ===========================================================================
+
+else
+
+	FC  := gfortran
+	CC  := gcc
+	CXX := g++
+
+
+	# -------------------------------------------------------------------
+	# Optimized Fortran flags
+	# -------------------------------------------------------------------
+
+	FFLAGS_OPT := \
+		-cpp \
+		-g \
+		-O2 \
+		-march=znver4 \
+		-std=f2008 \
+		-fdefault-real-8 \
+		$(NETCDF_FLAGS)
+
+
+	# -------------------------------------------------------------------
+	# Debug Fortran flags
+	# -------------------------------------------------------------------
+
+	FFLAGS_DBG := \
+		-cpp \
+		-g \
+		-O0 \
+		-std=f2008 \
+		-fdefault-real-8 \
+		-ffpe-trap=invalid,zero,overflow \
+		-fcheck=all \
+		-fbacktrace \
+		-Wall \
+		$(NETCDF_FLAGS)
+
+
+	# -------------------------------------------------------------------
+	# Optimized C++ flags
+	# -------------------------------------------------------------------
+
+	CXXFLAGS_OPT := \
+		-g \
+		-O2 \
+		-march=znver4 \
+		-std=c++11 \
+		$(NETCDF_FLAGS)
+
+
+	# -------------------------------------------------------------------
+	# Debug C++ flags
+	# -------------------------------------------------------------------
+
+	CXXFLAGS_DBG := \
+		-g \
+		-O0 \
+		-Wall \
+		-std=c++11 \
+		$(NETCDF_FLAGS)
+
+
+	# -------------------------------------------------------------------
+	# Linker and shared-library flags
+	# -------------------------------------------------------------------
+
+	LDFLAGS := -cpp
+
+	SFFLAGS := -fPIC
+	SLDFLAGS := -shared
+
+	CXXLIBS := -lstdc++ -lgfortran
+
+endif
+
+
+# ---------------------------------------------------------------------------
+# Default build uses optimized flags
+# ---------------------------------------------------------------------------
+
+FFLAGS   := $(FFLAGS_OPT)
+CXXFLAGS := $(CXXFLAGS_OPT)
+
+
+# ---------------------------------------------------------------------------
+# Shared-library mode
+#
+# Every object included in libpspline.so must be compiled with -fPIC.
+# ---------------------------------------------------------------------------
+
+ifeq ($(strip $(MAKE_SO)),1)
+
+	FFLAGS   += $(SFFLAGS)
+	CXXFLAGS += $(SFFLAGS)
+
+endif
+
+
+# ---------------------------------------------------------------------------
+# Directories
+# ---------------------------------------------------------------------------
+
+SRCDIR := $(shell pwd)
+
+PSPDIR := $(SRCDIR)/pspline
+EZSDIR := $(SRCDIR)/ezspline
+CZSDIR := $(SRCDIR)/czspline
+
+PREFIX := $(or $(PREFIX),$(SRCDIR)/build)
+
+LIBDIR := $(PREFIX)/lib
+INCDIR := $(PREFIX)/include
+TESTDR := $(PREFIX)/test
+
+
+# ---------------------------------------------------------------------------
+# Library names
+# ---------------------------------------------------------------------------
+
+LIBAR := libpspline.a
+LIBSO := libpspline.so
+
+
+# ---------------------------------------------------------------------------
+# Test executables
+# ---------------------------------------------------------------------------
+
+EXELUP := lookup_test
+EXEPSP := pspltest
+EXEQKS := qk_pspline
+EXEEZS := ezspline_test
+EXECZS := czspline_test
+
+
+# ---------------------------------------------------------------------------
+# Sources and objects
+# ---------------------------------------------------------------------------
+
+include source_dependency.mk
+
+OBJS := $(SRCS:%.f90=%.o)
+
+
+# ---------------------------------------------------------------------------
+# Main targets
+# ---------------------------------------------------------------------------
+
+.PHONY: \
+	all \
+	static \
+	shared \
+	install \
+	debug \
+	single \
+	uninstall \
+	clean \
+	clobber
+
+
+ifeq ($(strip $(MAKE_SO)),1)
+
+all: static shared \
+	$(EXELUP) \
+	$(EXEPSP) \
+	$(EXEQKS) \
+	$(EXEEZS) \
+	$(EXECZS)
+
+else
+
+all: static \
+	$(EXELUP) \
+	$(EXEPSP) \
+	$(EXEQKS) \
+	$(EXEEZS) \
+	$(EXECZS)
+
+endif
+
+
+# ---------------------------------------------------------------------------
+# Static library
+# ---------------------------------------------------------------------------
+
+static: $(LIBAR)
+
+$(LIBAR): $(OBJS)
+	@echo "=================================================="
+	@echo "Building PSPLINE static library"
+	@echo "=================================================="
+	@rm -f $@
+	ar rcs $@ $(OBJS)
+
+
+# ---------------------------------------------------------------------------
+# Shared library
+# ---------------------------------------------------------------------------
+
+shared: $(LIBSO)
+
+$(LIBSO): $(OBJS)
+	@echo "=================================================="
+	@echo "Building PSPLINE shared library"
+	@echo "MAKE_SO=$(MAKE_SO)"
+	@echo "=================================================="
+	@rm -f $@
+	$(FC) $(SLDFLAGS) $(LDFLAGS) \
+		-o $@ \
+		$(OBJS) \
+		$(FLIBS)
+
+
+# ---------------------------------------------------------------------------
+# Test executables
+# ---------------------------------------------------------------------------
+
+$(EXELUP): $(LIBAR)
+	$(FC) $(FFLAGS) \
+		$(PSPDIR)/$@.f90 \
+		-o $@ \
+		-L$(SRCDIR) \
+		-lpspline \
+		$(FLIBS)
+
+
+$(EXEPSP): $(LIBAR)
+	$(FC) $(FFLAGS) \
+		$(PSPDIR)/$@.f90 \
+		-o $@ \
+		-L$(SRCDIR) \
+		-lpspline \
+		$(FLIBS)
+
+
+$(EXEQKS): $(LIBAR)
+	$(FC) $(FFLAGS) \
+		$(EZSDIR)/$@.f90 \
+		-o $@ \
+		-L$(SRCDIR) \
+		-lpspline \
+		$(FLIBS)
+
+
+$(EXEEZS): $(LIBAR)
+	$(FC) $(FFLAGS) \
+		$(EZSDIR)/$@.f90 \
+		-o $@ \
+		-L$(SRCDIR) \
+		-lpspline \
+		$(FLIBS)
+
+
+$(EXECZS): $(LIBAR)
+	$(CXX) $(CXXFLAGS) \
+		$(CZSDIR)/$@.cc \
+		-o $@ \
+		-L$(SRCDIR) \
+		-lpspline \
+		$(CXXLIBS) \
+		$(FLIBS)
+
+
+# ---------------------------------------------------------------------------
+# Install
+#
+# install depends on all, so:
+#
+#     make MAKE_SO=1 install
+#
+# first builds both libpspline.a and libpspline.so and all test programs.
+# ---------------------------------------------------------------------------
+
+install: all
+	@mkdir -p $(LIBDIR)
+	@mkdir -p $(INCDIR)
+	@mkdir -p $(TESTDR)
+
+	@cp *.mod $(INCDIR)
+	@cp $(CZSDIR)/czspline_capi.h $(INCDIR)
+
+	@cp $(LIBAR) $(LIBDIR)
+
+ifeq ($(strip $(MAKE_SO)),1)
+	@cp $(LIBSO) $(LIBDIR)
+endif
+
+	@cp $(PSPDIR)/pspltest.output $(TESTDR)
+	@cp $(PSPDIR)/lookup_test.output $(TESTDR)
+	@cp $(EZSDIR)/ezspline_test.ref $(TESTDR)
+	@cp $(EZSDIR)/qk_pspline.output $(TESTDR)
+	@cp $(CZSDIR)/czspline_test.output $(TESTDR)
+
+	@test ! -f $(EXELUP) || cp $(EXELUP) $(TESTDR)
+	@test ! -f $(EXEPSP) || cp $(EXEPSP) $(TESTDR)
+	@test ! -f $(EXEQKS) || cp $(EXEQKS) $(TESTDR)
+	@test ! -f $(EXEEZS) || cp $(EXEEZS) $(TESTDR)
+	@test ! -f $(EXECZS) || cp $(EXECZS) $(TESTDR)
+
+
+# ---------------------------------------------------------------------------
+# Debug build
+#
+# Debug flags REPLACE the production optimization flags.
+#
+# Recommended:
+#
+#     make clean
+#     make debug
+#
+# or:
+#
+#     make clean
+#     make MAKE_SO=1 debug
+# ---------------------------------------------------------------------------
+
+debug: FFLAGS = $(FFLAGS_DBG)
+debug: CXXFLAGS = $(CXXFLAGS_DBG)
+
+ifeq ($(strip $(MAKE_SO)),1)
+
+debug: FFLAGS += $(SFFLAGS)
+debug: CXXFLAGS += $(SFFLAGS)
+
+debug: $(LIBAR) $(LIBSO) \
+	$(EXELUP) \
+	$(EXEPSP) \
+	$(EXEQKS) \
+	$(EXEEZS) \
+	$(EXECZS)
+
+else
+
+debug: $(LIBAR) \
+	$(EXELUP) \
+	$(EXEPSP) \
+	$(EXEQKS) \
+	$(EXEEZS) \
+	$(EXECZS)
+
+endif
+
+
+# ---------------------------------------------------------------------------
+# Single precision
+# ---------------------------------------------------------------------------
+
+single: FFLAGS += -D_SINGLE_PRECISION
+
+single: $(LIBAR) \
+	$(EXELUP) \
+	$(EXEPSP) \
+	$(EXEQKS) \
+	$(EXEEZS)
+
+
+# ---------------------------------------------------------------------------
+# Fortran module dependencies
+# ---------------------------------------------------------------------------
+
+include module_dependency.mk
+
+
+# ---------------------------------------------------------------------------
+# Fortran compilation
+#
+# -c is specified explicitly here.
+# ---------------------------------------------------------------------------
+
+%.o: %.f90
+	$(FC) -c $(FFLAGS) $(FINCL) $< -o $@
+
+
+# ---------------------------------------------------------------------------
+# Uninstall
+# ---------------------------------------------------------------------------
+
+uninstall:
+	@rm -rf $(PREFIX)
+
+
+# ---------------------------------------------------------------------------
+# Clean
+# ---------------------------------------------------------------------------
+
+clean:
+	@rm -f *~
+	@rm -f $(PSPDIR)/*~
+	@rm -f $(EZSDIR)/*~
+	@rm -f $(CZSDIR)/*~
+
+	@rm -f $(OBJS)
+	@rm -f *.mod
+
+
+# ---------------------------------------------------------------------------
+# Clobber
+# ---------------------------------------------------------------------------
+
+clobber: clean
+	@rm -f $(LIBAR)
+	@rm -f $(LIBSO)
+
+	@rm -f $(EXELUP)
+	@rm -f $(EXEPSP)
+	@rm -f $(EXEQKS)
+	@rm -f $(EXEEZS)
+	@rm -f $(EXECZS)

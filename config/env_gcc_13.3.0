@@ -1,0 +1,27 @@
+# Ranger GCC toolset 13 / pspline build environment
+# Source after:
+#   scl enable gcc-toolset-13 bash
+
+export GCC_ROOT=/opt/rh/gcc-toolset-13/root/usr
+export PATH=${GCC_ROOT}/bin:${PATH}
+
+export FLIBROOT=$(dirname "$(gcc -print-file-name=libgfortran.so)")
+export GCC_RUNTIME_ROOT=${GCC_ROOT}
+
+export FC=gfortran
+export CC=gcc
+export CXX=g++
+
+export HDF5_HOME=/usr
+export NETCDF_C_HOME=/usr
+export NETCDF_F_HOME=/usr
+export NETCDF_FORTRAN_HOME=/usr
+
+export L_NETCDF=" -L/usr/lib64 -lnetcdff -lnetcdf"
+export L_HDF5=" -L/usr/lib64 -lhdf5_fortran -lhdf5hl_fortran -lhdf5_hl -lhdf5"
+
+export CPATH=/usr/include:${CPATH}
+
+# GCC toolset libraries MUST be first.
+export LD_LIBRARY_PATH=${GCC_ROOT}/lib64:${GCC_ROOT}/lib:${FLIBROOT}:${LD_LIBRARY_PATH}:/usr/lib64
+export LIBRARY_PATH=${GCC_ROOT}/lib64:${GCC_ROOT}/lib:${FLIBROOT}:${LIBRARY_PATH}:/usr/lib64
