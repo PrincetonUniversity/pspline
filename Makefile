@@ -16,32 +16,32 @@ ifneq (,$(shell which nf-config))
 endif
 
 ifneq (,$(findstring icc, $(CC)))
-        FFLAGS = -cpp -O2 -stand f08 -real-size 64 -auto-scalar $(NETCDF_FLAGS)
-        LDFLAGS = -cpp
+        FFLAGS += -cpp -O2 -stand f08 -real-size 64 -auto-scalar $(NETCDF_FLAGS)
+        LDFLAGS += -cpp
         DFFLAGS = -g -traceback -check all -warn all
         SFFLAGS = -fPIC
         SLDFLAGS = -shared
-        CXXFLAGS = -O2 -std=c++11 $(NETCDF_FLAGS)
+        CXXFLAGS += -O2 -std=c++11 $(NETCDF_FLAGS)
         CXXLIBS = -lifcore
 
 else ifneq (,$(findstring pgcc, $(CC)))
-        FFLAGS = -cpp -fast -r8 $(NETCDF_FLAGS)
-        LDFLAGS = -cpp
+        FFLAGS += -cpp -fast -r8 $(NETCDF_FLAGS)
+        LDFLAGS += -cpp
         DFFLAGS = -g -traceback -Mbounds
         SFFLAGS = -fPIC
         SLDFLAGS = -shared
-        CXXFLAGS = -O2 -mp -std=c++11 $(NETCDF_FLAGS)
+        CXXFLAGS += -O2 -mp -std=c++11 $(NETCDF_FLAGS)
         CXXLIBS = -lstdc++ -lpgf90 -lpgf90rtl
 
 else
         FC = gfortran
 	CC = gcc
-        FFLAGS = -cpp -dM -O2 -std=f2008 -fdefault-real-8 -ffpe-trap=invalid,zero,overflow $(NETCDF_FLAGS)
-        LDFLAGS = -cpp
+        FFLAGS += -cpp -dM -O2 -std=f2008 -fdefault-real-8 -ffpe-trap=invalid,zero,overflow $(NETCDF_FLAGS)
+        LDFLAGS += -cpp
         DFFLAGS = -Og -Wall
         SFFLAGS = -fPIC
         SLDFLAGS = -shared
-        CXXFLAGS = -O2 -std=c++11 $(NETCDF_FLAGS)
+        CXXFLAGS += -O2 -std=c++11 $(NETCDF_FLAGS)
         CXXLIBS = -lstdc++ -lgfortran
 endif
 
