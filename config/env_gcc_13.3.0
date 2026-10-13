@@ -1,27 +1,315 @@
-# Ranger GCC toolset 13 / pspline build environment
-# Source after:
-#   scl enable gcc-toolset-13 bash
+#!/bin/bash
+#
+# ============================================================================
+# PSPLINE environment
+#
+# PPPL Ranger
+# GCC Toolset 13 / GCC 13.3.x
+# OpenMPI system RPM
+# NetCDF / HDF5 system RPM
+#
+# TRANSP shared branch
+# MAKE_SO=1
+#
+# Usage:
+#
+#     scl enable gcc-toolset-13 bash
+#
+#     source ./env_gcc_13.3.0
+#     make show
+#     make clobber
+#     make
+#     make install
+#
+# ============================================================================
+
+
+# ============================================================================
+# GCC Toolset 13
+# ============================================================================
 
 export GCC_ROOT=/opt/rh/gcc-toolset-13/root/usr
-export PATH=${GCC_ROOT}/bin:${PATH}
 
-export FLIBROOT=$(dirname "$(gcc -print-file-name=libgfortran.so)")
-export GCC_RUNTIME_ROOT=${GCC_ROOT}
+if [[ ! -d "${GCC_ROOT}/bin" ]]; then
+    echo "ERROR: GCC Toolset 13 not found:"
+    echo "  ${GCC_ROOT}/bin"
+    return 1
+fi
+
+export PATH="${GCC_ROOT}/bin:${PATH}"
+
+hash -r
+
+export GCC_RUNTIME_ROOT="${GCC_ROOT}"
+
+
+# ============================================================================
+# Compilers
+# ============================================================================
 
 export FC=gfortran
+export F90=gfortran
 export CC=gcc
 export CXX=g++
 
+
+# ============================================================================
+# Compiler validation
+# ============================================================================
+
+for compiler in gfortran gcc g++; do
+    if ! command -v "${compiler}" >/dev/null 2>&1; then
+        echo "ERROR: Compiler not found: ${compiler}"
+        return 1
+    fi
+done
+
+export GCC_VERSION="$(gfortran -dumpfullversion -dumpversion)"
+
+GCC_MAJOR="${GCC_VERSION%%.*}"
+
+if [[ "${GCC_MAJOR}" != "13" ]]; then
+    echo "ERROR: GCC Toolset 13 is required."
+    echo "Detected version: ${GCC_VERSION}"
+    return 1
+fi
+
+
+# ============================================================================
+# GCC runtime
+# ============================================================================
+
+LIBGFORTRAN="$(gfortran -print-file-name=libgfortran.so)"
+
+if [[ ! -f "${LIBGFORTRAN}" ]]; then
+    echo "ERROR: libgfortran.so not found."
+    return 1
+fi
+
+export FLIBROOT="$(
+    dirname "$(readlink -f "${LIBGFORTRAN}")"
+)"
+
+
+# ============================================================================
+# OpenMPI
+#
+# PSPLINE does not require MPI, but these variables are retained for
+# compatibility with the wider TRANSP environment.
+# ============================================================================
+
+export OPENMPI_HOME=/usr/lib64/openmpi
+
+export PATH="${OPENMPI_HOME}/bin:${PATH}"
+
+export MPIF90="${OPENMPI_HOME}/bin/mpif90"
+export MPIFC="${OPENMPI_HOME}/bin/mpifort"
+export MPICC="${OPENMPI_HOME}/bin/mpicc"
+export MPICXX="${OPENMPI_HOME}/bin/mpicxx"
+
+export FORTRAN_COMMAND="${MPIF90}"
+export CC_COMMAND="${MPICC}"
+export CX_COMMAND="${MPICXX}"
+
+
+# ============================================================================
+# NetCDF / HDF5
+# ============================================================================
+
 export HDF5_HOME=/usr
+
 export NETCDF_C_HOME=/usr
 export NETCDF_F_HOME=/usr
 export NETCDF_FORTRAN_HOME=/usr
 
-export L_NETCDF=" -L/usr/lib64 -lnetcdff -lnetcdf"
-export L_HDF5=" -L/usr/lib64 -lhdf5_fortran -lhdf5hl_fortran -lhdf5_hl -lhdf5"
+export NETCDF_MODDIR=/usr/lib64/gfortran/modules
 
-export CPATH=/usr/include:${CPATH}
+if [[ ! -f "${NETCDF_MODDIR}/netcdf.mod" ]]; then
+    echo "ERROR: netcdf.mod not found:"
+    echo "  ${NETCDF_MODDIR}/netcdf.mod"
+    return 1
+fi
 
-# GCC toolset libraries MUST be first.
-export LD_LIBRARY_PATH=${GCC_ROOT}/lib64:${GCC_ROOT}/lib:${FLIBROOT}:${LD_LIBRARY_PATH}:/usr/lib64
-export LIBRARY_PATH=${GCC_ROOT}/lib64:${GCC_ROOT}/lib:${FLIBROOT}:${LIBRARY_PATH}:/usr/lib64
+
+# ============================================================================
+# Build configuration
+# ============================================================================
+
+export MAKE_SO=1
+
+
+# ============================================================================
+# Installation directory
+#
+# Can be overridden before sourcing.
+# ============================================================================
+
+export PSPLINE_SOURCE_ROOT="$(
+    cd "$(dirname "${BASH_SOURCE[0]}")" && pwd
+)"
+
+export PREFIX="${PREFIX:-${PSPLINE_SOURCE_ROOT}/builds/gcc/${GCC_VERSION}}"
+
+
+# ============================================================================
+# Compiler flags
+# ============================================================================
+
+export FFLAGS="\
+-cpp \
+-O2 \
+-g \
+-fdefault-real-8 \
+-fallow-argument-mismatch \
+-fallow-invalid-boz \
+-fno-range-check \
+-fdollar-ok"
+
+export CFLAGS="\
+-O2 \
+-g \
+-fPIC"
+
+export CXXFLAGS="\
+-O2 \
+-g \
+-std=c++11 \
+-fPIC"
+
+export SFFLAGS="-fPIC"
+
+export SLDFLAGS="-shared"
+
+export LDFLAGS=""
+
+
+# ============================================================================
+# NetCDF / HDF5 libraries
+# ============================================================================
+
+export L_NETCDF="\
+-Wl,-rpath,/usr/lib64 \
+-L/usr/lib64 \
+-lnetcdff \
+-lnetcdf"
+
+export L_HDF5="\
+-Wl,-rpath,/usr/lib64 \
+-L/usr/lib64 \
+-lhdf5_fortran \
+-lhdf5hl_fortran \
+-lhdf5_hl \
+-lhdf5"
+
+
+# ============================================================================
+# GNU Fortran runtime
+# ============================================================================
+
+export L_FLIBS="\
+-Wl,-rpath,${FLIBROOT} \
+-L${FLIBROOT} \
+-lgfortran \
+-lm"
+
+
+# ============================================================================
+# GNU C/C++ runtime
+# ============================================================================
+
+export L_CLIBS="\
+-Wl,-rpath,${FLIBROOT} \
+-L${FLIBROOT} \
+-lstdc++ \
+-lgfortran \
+-lgcc_s"
+
+
+# ============================================================================
+# Runtime library search path
+# ============================================================================
+
+export LD_LIBRARY_PATH="\
+${GCC_ROOT}/lib64:\
+${GCC_ROOT}/lib:\
+${FLIBROOT}:\
+${OPENMPI_HOME}/lib:\
+/usr/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+
+
+# ============================================================================
+# Link-time library search path
+# ============================================================================
+
+export LIBRARY_PATH="\
+${GCC_ROOT}/lib64:\
+${GCC_ROOT}/lib:\
+${FLIBROOT}:\
+${OPENMPI_HOME}/lib:\
+/usr/lib64${LIBRARY_PATH:+:${LIBRARY_PATH}}"
+
+
+# ============================================================================
+# Include search path
+# ============================================================================
+
+export CPATH="\
+/usr/include/openmpi-x86_64:\
+/usr/include${CPATH:+:${CPATH}}"
+
+
+# ============================================================================
+# Environment summary
+# ============================================================================
+
+echo
+echo "============================================================"
+echo " PSPLINE environment -- Ranger / GCC ${GCC_VERSION}"
+echo "============================================================"
+echo
+
+echo "Compilers:"
+echo "  FC               = ${FC}"
+echo "  CC               = ${CC}"
+echo "  CXX              = ${CXX}"
+echo "  GCC_VERSION      = ${GCC_VERSION}"
+echo
+
+echo "Build:"
+echo "  MAKE_SO          = ${MAKE_SO}"
+echo "  PREFIX           = ${PREFIX}"
+echo
+
+echo "GCC runtime:"
+echo "  GCC_ROOT         = ${GCC_ROOT}"
+echo "  FLIBROOT         = ${FLIBROOT}"
+echo
+
+echo "OpenMPI:"
+echo "  OPENMPI_HOME     = ${OPENMPI_HOME}"
+echo
+
+echo "NetCDF:"
+echo "  NETCDF_F_HOME    = ${NETCDF_F_HOME}"
+echo "  NETCDF_C_HOME    = ${NETCDF_C_HOME}"
+echo "  NETCDF_MODDIR    = ${NETCDF_MODDIR}"
+echo
+
+echo "HDF5:"
+echo "  HDF5_HOME        = ${HDF5_HOME}"
+echo
+
+echo "Libraries:"
+echo "  L_NETCDF         = ${L_NETCDF}"
+echo "  L_HDF5           = ${L_HDF5}"
+echo "  L_FLIBS          = ${L_FLIBS}"
+echo "  L_CLIBS          = ${L_CLIBS}"
+echo
+
+echo "Compiler flags:"
+echo "  FFLAGS           = ${FFLAGS}"
+echo "  CXXFLAGS         = ${CXXFLAGS}"
+echo "  SFFLAGS          = ${SFFLAGS}"
+echo
+
+echo "============================================================"
