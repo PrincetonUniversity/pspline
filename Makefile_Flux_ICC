@@ -1,0 +1,653 @@
+# ---------------------------------------------------------------------------
+# Makefile: PSPLINE
+#
+# PPPL Flux
+# Intel oneAPI 2023.2.0
+# OpenMPI 4.1.6
+#
+# Compilers:
+#   FC  = ifort
+#   CC  = icx
+#   CXX = icpx
+#
+# Builds:
+#   libpspline.a
+#   libpspline.so   when MAKE_SO=1
+#
+# Usage:
+#
+#   source env_intel_2023.sh
+#
+#   make
+#   make MAKE_SO=1
+#   make MAKE_SO=1 install
+#
+# Debug:
+#
+#   make clobber
+#   make MAKE_SO=1 debug
+#
+# ---------------------------------------------------------------------------
+
+SHELL := /bin/bash
+
+
+# ---------------------------------------------------------------------------
+# Build options
+# ---------------------------------------------------------------------------
+
+MAKE_SO ?= 0
+DEBUG ?= 0
+
+
+# ---------------------------------------------------------------------------
+# Compilers
+#
+# Use compiler settings from the environment.
+# Default to Intel oneAPI 2023 compilers.
+# ---------------------------------------------------------------------------
+
+ifeq ($(origin FC),default)
+    FC = ifort
+endif
+
+ifeq ($(origin FC),undefined)
+    FC = ifort
+endif
+
+ifeq ($(origin CC),default)
+    CC = icx
+endif
+
+ifeq ($(origin CC),undefined)
+    CC = icx
+endif
+
+ifeq ($(origin CXX),default)
+    CXX = icpx
+endif
+
+ifeq ($(origin CXX),undefined)
+    CXX = icpx
+endif
+
+F77 ?= $(FC)
+F90 ?= $(FC)
+
+AR ?= ar
+ARFLAGS := rcs
+
+
+# ---------------------------------------------------------------------------
+# NetCDF
+#
+# Required environment:
+#
+#   NETCDF_F_HOME
+#   NETCDF_C_HOME
+#
+# Intel NetCDF:
+#
+#   libnetcdff.so -> $(NETCDF_F_HOME)/lib
+#   libnetcdf.so  -> $(NETCDF_C_HOME)/lib64
+# ---------------------------------------------------------------------------
+
+ifeq ($(strip $(NETCDF_F_HOME)),)
+    $(error NETCDF_F_HOME is not defined. Source Intel environment first)
+endif
+
+ifeq ($(strip $(NETCDF_C_HOME)),)
+    $(error NETCDF_C_HOME is not defined. Source Intel environment first)
+endif
+
+
+NETCDF_FLAGS := -D_NETCDF
+
+FINCL := \
+    -I$(NETCDF_F_HOME)/include \
+    -I$(NETCDF_C_HOME)/include
+
+
+# ---------------------------------------------------------------------------
+# NetCDF libraries
+#
+# Use L_NETCDF from the environment when available.
+# ---------------------------------------------------------------------------
+
+L_NETCDF ?= \
+    -L$(NETCDF_F_HOME)/lib \
+    -lnetcdff \
+    -L$(NETCDF_C_HOME)/lib64 \
+    -lnetcdf \
+    -lm
+
+
+NETCDF_RPATH := \
+    -Wl,-rpath,$(NETCDF_F_HOME)/lib \
+    -Wl,-rpath,$(NETCDF_C_HOME)/lib64
+
+
+# ---------------------------------------------------------------------------
+# Intel Fortran optimization flags
+#
+# -cpp          Enable preprocessing
+# -g            Debugging symbols
+# -O2           Production optimization
+# -real-size 64 Default REAL uses 64 bits
+# -auto-scalar  Automatic storage for scalar local variables
+# -fPIC         Position-independent code
+# -traceback    Runtime traceback information
+#
+# Do not use -xCORE-AVX2 because Flux uses AMD Zen 4 nodes.
+#
+# -real-size 64 preserves the default-real configuration of the
+# original PSPLINE Makefile.
+# ---------------------------------------------------------------------------
+
+FFLAGS_OPT := \
+    -cpp \
+    -g \
+    -O2 \
+    -real-size 64 \
+    -auto-scalar \
+    -fPIC \
+    -traceback \
+    $(NETCDF_FLAGS)
+
+
+# ---------------------------------------------------------------------------
+# Intel Fortran debug flags
+# ---------------------------------------------------------------------------
+
+FFLAGS_DBG := \
+    -cpp \
+    -g \
+    -O0 \
+    -real-size 64 \
+    -auto-scalar \
+    -fPIC \
+    -traceback \
+    -check all \
+    -warn all \
+    -fpe0 \
+    $(NETCDF_FLAGS)
+
+
+# ---------------------------------------------------------------------------
+# Intel C++ optimization flags
+# ---------------------------------------------------------------------------
+
+CXXFLAGS_OPT := \
+    -g \
+    -O2 \
+    -fPIC \
+    -std=c++11 \
+    $(NETCDF_FLAGS)
+
+
+# ---------------------------------------------------------------------------
+# Intel C++ debug flags
+# ---------------------------------------------------------------------------
+
+CXXFLAGS_DBG := \
+    -g \
+    -O0 \
+    -fPIC \
+    -Wall \
+    -std=c++11 \
+    $(NETCDF_FLAGS)
+
+
+# ---------------------------------------------------------------------------
+# Select compiler flags
+#
+# DEBUG=0 : optimized
+# DEBUG=1 : debug
+#
+# Objects are always compiled with -fPIC so that libpspline.a
+# can also be linked into other shared libraries.
+# ---------------------------------------------------------------------------
+
+ifeq ($(DEBUG),0)
+
+    FFLAGS := $(FFLAGS_OPT)
+    CXXFLAGS := $(CXXFLAGS_OPT)
+
+else
+
+    FFLAGS := $(FFLAGS_DBG)
+    CXXFLAGS := $(CXXFLAGS_DBG)
+
+endif
+
+
+# ---------------------------------------------------------------------------
+# Shared library flags
+# ---------------------------------------------------------------------------
+
+SLDFLAGS := -shared
+
+LDFLAGS ?=
+
+
+# ---------------------------------------------------------------------------
+# Intel Fortran runtime
+#
+# FLIBROOT is supplied by env_intel_2023.sh.
+#
+# Fortran executables and libpspline.so are linked using ifort.
+# This automatically selects the Intel Fortran runtime.
+#
+# The C++ test executable needs the Fortran runtime explicitly.
+# ---------------------------------------------------------------------------
+
+ifneq ($(strip $(FLIBROOT)),)
+
+    INTEL_RPATH := -Wl,-rpath,$(FLIBROOT)
+
+    CXXLIBS ?= \
+        -L$(FLIBROOT) \
+        -lifcore \
+        -lifport \
+        -limf \
+        -lsvml \
+        -lintlc \
+        -lm
+
+else
+
+    INTEL_RPATH :=
+
+    CXXLIBS ?= \
+        -lifcore \
+        -lifport \
+        -limf \
+        -lsvml \
+        -lintlc \
+        -lm
+
+endif
+
+
+# ---------------------------------------------------------------------------
+# Directories
+# ---------------------------------------------------------------------------
+
+SRCDIR := $(CURDIR)
+
+PSPDIR := $(SRCDIR)/pspline
+EZSDIR := $(SRCDIR)/ezspline
+CZSDIR := $(SRCDIR)/czspline
+
+
+# ---------------------------------------------------------------------------
+# Installation directory
+#
+# PREFIX can be supplied by the environment or command line.
+# ---------------------------------------------------------------------------
+
+PREFIX ?= $(SRCDIR)/build
+
+LIBDIR := $(PREFIX)/lib
+INCDIR := $(PREFIX)/include
+TESTDR := $(PREFIX)/test
+
+
+# ---------------------------------------------------------------------------
+# Library names
+# ---------------------------------------------------------------------------
+
+LIBAR := libpspline.a
+LIBSO := libpspline.so
+
+
+# ---------------------------------------------------------------------------
+# Test executables
+# ---------------------------------------------------------------------------
+
+EXELUP := lookup_test
+EXEPSP := pspltest
+EXEQKS := qk_pspline
+EXEEZS := ezspline_test
+EXECZS := czspline_test
+
+
+# ---------------------------------------------------------------------------
+# Sources and objects
+#
+# Preserve original PSPLINE source dependency configuration.
+# ---------------------------------------------------------------------------
+
+include source_dependency.mk
+
+OBJS := $(SRCS:%.f90=%.o)
+
+
+# ---------------------------------------------------------------------------
+# Main targets
+# ---------------------------------------------------------------------------
+
+.PHONY: \
+    all \
+    static \
+    shared \
+    install \
+    debug \
+    single \
+    uninstall \
+    clean \
+    clobber \
+    show
+
+
+ifeq ($(strip $(MAKE_SO)),1)
+
+all: static shared \
+    $(EXELUP) \
+    $(EXEPSP) \
+    $(EXEQKS) \
+    $(EXEEZS) \
+    $(EXECZS)
+
+else
+
+all: static \
+    $(EXELUP) \
+    $(EXEPSP) \
+    $(EXEQKS) \
+    $(EXEEZS) \
+    $(EXECZS)
+
+endif
+
+
+# ---------------------------------------------------------------------------
+# Static library
+# ---------------------------------------------------------------------------
+
+static: $(LIBAR)
+
+$(LIBAR): $(OBJS)
+	@echo "=================================================="
+	@echo "Building PSPLINE static library"
+	@echo "=================================================="
+	@rm -f $@
+	$(AR) $(ARFLAGS) $@ $(OBJS)
+
+
+# ---------------------------------------------------------------------------
+# Shared library
+#
+# Use ifort to ensure the correct Intel Fortran runtime is linked.
+#
+# Embed NetCDF and Intel runtime search paths.
+# ---------------------------------------------------------------------------
+
+shared: $(LIBSO)
+
+$(LIBSO): $(OBJS)
+	@echo "=================================================="
+	@echo "Building PSPLINE shared library"
+	@echo "MAKE_SO=$(MAKE_SO)"
+	@echo "=================================================="
+	@rm -f $@
+	$(FC) $(SLDFLAGS) $(LDFLAGS) \
+		-o $@ \
+		$(OBJS) \
+		$(L_NETCDF) \
+		$(NETCDF_RPATH) \
+		$(INTEL_RPATH)
+
+
+# ---------------------------------------------------------------------------
+# Test executables
+#
+# Link explicitly against libpspline.a to ensure that tests use
+# the static library even when libpspline.so also exists.
+# ---------------------------------------------------------------------------
+
+$(EXELUP): $(LIBAR)
+	@echo "Building $(EXELUP)"
+	$(FC) $(FFLAGS) \
+		$(PSPDIR)/$@.f90 \
+		-o $@ \
+		$(LIBAR) \
+		$(L_NETCDF) \
+		$(NETCDF_RPATH)
+
+
+$(EXEPSP): $(LIBAR)
+	@echo "Building $(EXEPSP)"
+	$(FC) $(FFLAGS) \
+		$(PSPDIR)/$@.f90 \
+		-o $@ \
+		$(LIBAR) \
+		$(L_NETCDF) \
+		$(NETCDF_RPATH)
+
+
+$(EXEQKS): $(LIBAR)
+	@echo "Building $(EXEQKS)"
+	$(FC) $(FFLAGS) \
+		$(EZSDIR)/$@.f90 \
+		-o $@ \
+		$(LIBAR) \
+		$(L_NETCDF) \
+		$(NETCDF_RPATH)
+
+
+$(EXEEZS): $(LIBAR)
+	@echo "Building $(EXEEZS)"
+	$(FC) $(FFLAGS) \
+		$(EZSDIR)/$@.f90 \
+		-o $@ \
+		$(LIBAR) \
+		$(L_NETCDF) \
+		$(NETCDF_RPATH)
+
+
+$(EXECZS): $(LIBAR)
+	@echo "Building $(EXECZS)"
+	$(CXX) $(CXXFLAGS) \
+		$(CZSDIR)/$@.cc \
+		-o $@ \
+		$(LIBAR) \
+		$(L_NETCDF) \
+		$(CXXLIBS) \
+		$(NETCDF_RPATH) \
+		$(INTEL_RPATH)
+
+
+# ---------------------------------------------------------------------------
+# Install
+#
+# make MAKE_SO=1 install
+#
+# Builds both static and shared libraries, then installs:
+#
+#   libpspline.a
+#   libpspline.so
+#   Fortran module files
+#   C interface header
+#   Test executables
+#   Reference test outputs
+# ---------------------------------------------------------------------------
+
+install: all
+	@echo "=================================================="
+	@echo "Installing PSPLINE in $(PREFIX)"
+	@echo "=================================================="
+
+	@mkdir -p $(LIBDIR)
+	@mkdir -p $(INCDIR)
+	@mkdir -p $(TESTDR)
+
+	@cp *.mod $(INCDIR)
+	@cp $(CZSDIR)/czspline_capi.h $(INCDIR)
+
+	@cp $(LIBAR) $(LIBDIR)
+
+ifeq ($(strip $(MAKE_SO)),1)
+	@cp $(LIBSO) $(LIBDIR)
+endif
+
+	@cp $(PSPDIR)/pspltest.output $(TESTDR)
+	@cp $(PSPDIR)/lookup_test.output $(TESTDR)
+	@cp $(EZSDIR)/ezspline_test.ref $(TESTDR)
+	@cp $(EZSDIR)/qk_pspline.output $(TESTDR)
+	@cp $(CZSDIR)/czspline_test.output $(TESTDR)
+
+	@test ! -f $(EXELUP) || cp $(EXELUP) $(TESTDR)
+	@test ! -f $(EXEPSP) || cp $(EXEPSP) $(TESTDR)
+	@test ! -f $(EXEQKS) || cp $(EXEQKS) $(TESTDR)
+	@test ! -f $(EXEEZS) || cp $(EXEEZS) $(TESTDR)
+	@test ! -f $(EXECZS) || cp $(EXECZS) $(TESTDR)
+
+
+# ---------------------------------------------------------------------------
+# Debug build
+#
+# Debug flags must be selected before compilation.
+#
+# Recommended:
+#
+#   make clobber
+#   make MAKE_SO=1 DEBUG=1
+#
+# The debug target below provides the same configuration.
+# ---------------------------------------------------------------------------
+
+debug: DEBUG = 1
+
+debug: FFLAGS = $(FFLAGS_DBG)
+debug: CXXFLAGS = $(CXXFLAGS_DBG)
+
+ifeq ($(strip $(MAKE_SO)),1)
+
+debug: $(LIBAR) $(LIBSO) \
+    $(EXELUP) \
+    $(EXEPSP) \
+    $(EXEQKS) \
+    $(EXEEZS) \
+    $(EXECZS)
+
+else
+
+debug: $(LIBAR) \
+    $(EXELUP) \
+    $(EXEPSP) \
+    $(EXEQKS) \
+    $(EXEEZS) \
+    $(EXECZS)
+
+endif
+
+
+# ---------------------------------------------------------------------------
+# Single precision
+#
+# This retains the original PSPLINE single-precision target.
+#
+# Remove -real-size 64 for this build and define
+# _SINGLE_PRECISION.
+# ---------------------------------------------------------------------------
+
+single: FFLAGS = $(filter-out -real-size 64,$(FFLAGS_OPT)) \
+    -D_SINGLE_PRECISION
+
+single: $(LIBAR) \
+    $(EXELUP) \
+    $(EXEPSP) \
+    $(EXEQKS) \
+    $(EXEEZS)
+
+
+# ---------------------------------------------------------------------------
+# Fortran module dependencies
+# ---------------------------------------------------------------------------
+
+include module_dependency.mk
+
+
+# ---------------------------------------------------------------------------
+# Fortran compilation
+#
+# -c is supplied explicitly.
+# ---------------------------------------------------------------------------
+
+%.o: %.f90
+	$(FC) -c $(FFLAGS) $(FINCL) $< -o $@
+
+
+# ---------------------------------------------------------------------------
+# Show build configuration
+# ---------------------------------------------------------------------------
+
+show:
+	@echo
+	@echo "============================================================"
+	@echo " PSPLINE build configuration -- Flux / Intel 2023"
+	@echo "============================================================"
+	@echo
+	@echo "Compilers:"
+	@echo "  FC              = $(FC)"
+	@echo "  CC              = $(CC)"
+	@echo "  CXX             = $(CXX)"
+	@echo
+	@echo "Build:"
+	@echo "  DEBUG           = $(DEBUG)"
+	@echo "  MAKE_SO         = $(MAKE_SO)"
+	@echo "  PREFIX          = $(PREFIX)"
+	@echo
+	@echo "Compiler flags:"
+	@echo "  FFLAGS          = $(FFLAGS)"
+	@echo "  CXXFLAGS        = $(CXXFLAGS)"
+	@echo
+	@echo "NetCDF:"
+	@echo "  NETCDF_F_HOME   = $(NETCDF_F_HOME)"
+	@echo "  NETCDF_C_HOME   = $(NETCDF_C_HOME)"
+	@echo "  L_NETCDF        = $(L_NETCDF)"
+	@echo
+	@echo "Intel runtime:"
+	@echo "  FLIBROOT        = $(FLIBROOT)"
+	@echo "  CXXLIBS         = $(CXXLIBS)"
+	@echo
+	@echo "============================================================"
+
+
+# ---------------------------------------------------------------------------
+# Uninstall
+# ---------------------------------------------------------------------------
+
+uninstall:
+	@echo "Removing PSPLINE installation: $(PREFIX)"
+	@rm -rf $(PREFIX)
+
+
+# ---------------------------------------------------------------------------
+# Clean
+# ---------------------------------------------------------------------------
+
+clean:
+	@rm -f *~
+	@rm -f $(PSPDIR)/*~
+	@rm -f $(EZSDIR)/*~
+	@rm -f $(CZSDIR)/*~
+
+	@rm -f $(OBJS)
+	@rm -f *.mod
+
+
+# ---------------------------------------------------------------------------
+# Complete cleanup
+# ---------------------------------------------------------------------------
+
+clobber: clean
+	@rm -f $(LIBAR)
+	@rm -f $(LIBSO)
+
+	@rm -f $(EXELUP)
+	@rm -f $(EXEPSP)
+	@rm -f $(EXEQKS)
+	@rm -f $(EXEEZS)
+	@rm -f $(EXECZS)

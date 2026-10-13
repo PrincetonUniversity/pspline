@@ -1,0 +1,387 @@
+#!/bin/bash
+#
+# ============================================================================
+# PSPLINE build environment
+#
+# PPPL Flux
+# Intel oneAPI 2023.2.0
+# OpenMPI 4.1.6
+#
+# Compilers:
+#   Fortran : ifort
+#   C       : icx
+#   C++     : icpx
+#
+# Usage:
+#
+#   source env_intel_2023.sh
+#   make
+#
+# ============================================================================
+
+
+# ============================================================================
+# Start with a clean module environment
+# ============================================================================
+
+module purge
+
+hash -r
+
+
+# ============================================================================
+# Intel compilers
+# ============================================================================
+
+module load intel/2023.2.0
+
+export CC=icx
+export CXX=icpx
+
+export FC=ifort
+export F77=ifort
+export F90=ifort
+
+export COMPILER=intel
+
+export FORTRAN_VARIANT=Intel
+export INTEL_CXXLIB_ICC=1
+
+
+# ============================================================================
+# Intel Fortran runtime
+#
+# Same runtime location as the TRANSP Intel 2023 environment.
+# ============================================================================
+
+export FLIBROOT="/opt/hpc/compiler/intel/2023.2.0/compiler/2023.2.0/linux/compiler/lib/intel64_lin"
+
+export LD_LIBRARY_PATH="${FLIBROOT}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+
+
+# ============================================================================
+# MPI
+#
+# OpenMPI 4.1.6 built with Intel 2023.2.0.
+# ============================================================================
+
+module load openmpi/4.1.6-intel-2023.2.0-f6nrfjk
+
+export MPICC=mpicc
+export MPICXX=mpicxx
+
+export MPIFC=mpif90
+export MPIF77=mpif77
+export MPIF90=mpif90
+
+export MPI_FC_CMD_EXT="${MPIF90}"
+
+
+# ============================================================================
+# HDF5
+#
+# Use the OpenMPI/Intel HDF5 module from TRANSP.
+# ============================================================================
+
+module load openmpi-4.1.6/intel-2023.2.0/hdf5/1.14.6-c77my
+
+
+# ============================================================================
+# NetCDF
+#
+# Use NetCDF libraries built with Intel 2023.2.0 and OpenMPI 4.1.6.
+#
+# NETCDF_C_HOME and NETCDF_F_HOME are supplied by the loaded modules.
+# ============================================================================
+
+module load openmpi-4.1.6/intel-2023.2.0/netcdf-c/4.9.2-qpqoj
+
+module load openmpi-4.1.6/intel-2023.2.0/netcdf-fortran/4.6.1-bfskx
+
+
+# ============================================================================
+# SZIP
+# ============================================================================
+
+module load libszip/2.1.1-intel-2023.2.0-bo3cg
+
+
+# ============================================================================
+# Validate required module variables
+# ============================================================================
+
+if [[ -z "${NETCDF_F_HOME:-}" ]]; then
+    echo "ERROR: NETCDF_F_HOME is not defined."
+    return 1 2>/dev/null || exit 1
+fi
+
+if [[ -z "${NETCDF_C_HOME:-}" ]]; then
+    echo "ERROR: NETCDF_C_HOME is not defined."
+    return 1 2>/dev/null || exit 1
+fi
+
+
+# ============================================================================
+# NetCDF
+# ============================================================================
+
+export NETCDF_FORTRAN_HOME="${NETCDF_F_HOME}"
+
+export NETCDF_MODDIR="${NETCDF_F_HOME}/include"
+
+export NETCDF_FLAGS="-D_NETCDF"
+
+
+# ============================================================================
+# NetCDF include directories
+# ============================================================================
+
+export I_NETCDF="\
+-I${NETCDF_F_HOME}/include \
+-I${NETCDF_C_HOME}/include"
+
+
+# ============================================================================
+# NetCDF libraries
+#
+# Keep NetCDF Fortran before NetCDF C.
+#
+# The Intel 2023 Flux installation uses:
+#
+#   libnetcdff.so -> ${NETCDF_F_HOME}/lib
+#   libnetcdf.so  -> ${NETCDF_C_HOME}/lib64
+# ============================================================================
+
+export L_NETCDF="\
+-Wl,-rpath,${NETCDF_F_HOME}/lib \
+-L${NETCDF_F_HOME}/lib \
+-lnetcdff \
+-Wl,-rpath,${NETCDF_C_HOME}/lib64 \
+-L${NETCDF_C_HOME}/lib64 \
+-lnetcdf \
+-lm"
+
+
+# ============================================================================
+# HDF5
+#
+# HDF5_HOME is supplied by the HDF5 module.
+# ============================================================================
+
+if [[ -n "${HDF5_HOME:-}" ]]; then
+
+    export I_HDF5="-I${HDF5_HOME}/include"
+
+    export L_HDF5="\
+-Wl,-rpath,${HDF5_HOME}/lib \
+-L${HDF5_HOME}/lib \
+-lhdf5_fortran \
+-lhdf5"
+
+else
+
+    export I_HDF5=""
+    export L_HDF5=""
+
+fi
+
+
+# ============================================================================
+# SZIP
+#
+# SZIP_HOME is supplied by the module.
+# ============================================================================
+
+if [[ -n "${SZIP_HOME:-}" ]]; then
+
+    export I_SZIP="-I${SZIP_HOME}/include"
+
+    export L_SZIP="\
+-Wl,-rpath,${SZIP_HOME}/lib \
+-L${SZIP_HOME}/lib \
+-lsz"
+
+else
+
+    export I_SZIP=""
+    export L_SZIP=""
+
+fi
+
+
+# ============================================================================
+# Intel compiler optimization flags
+#
+# -O2           Standard optimization
+# -xCORE-AVX2   AVX2 optimization for supported Intel processors
+# -fPIC         Position-independent code for shared libraries
+# -traceback    Fortran runtime traceback information
+#
+# Unlike GCC, Intel ifort does not use:
+#
+#   -fallow-argument-mismatch
+#   -fno-range-check
+#   -fdollar-ok
+#
+# ============================================================================
+
+export FFLAGS="\
+-g \
+-O2 \
+-xCORE-AVX2 \
+-fPIC \
+-traceback"
+
+export FCFLAGS="${FFLAGS}"
+
+export CFLAGS="\
+-g \
+-O2 \
+-xCORE-AVX2 \
+-fPIC"
+
+export CXXFLAGS="\
+-g \
+-O2 \
+-xCORE-AVX2 \
+-fPIC"
+
+
+# ============================================================================
+# Intel Fortran runtime libraries
+# ============================================================================
+
+export L_FLIBS="\
+-Wl,-rpath,${FLIBROOT} \
+-L${FLIBROOT} \
+-lifcore \
+-lifport \
+-limf \
+-lsvml \
+-lintlc \
+-lm"
+
+
+# ============================================================================
+# General linker flags
+# ============================================================================
+
+export LDFLAGS=""
+
+
+# ============================================================================
+# Shared-library runtime paths
+#
+# Include Intel, MPI, NetCDF, HDF5, and SZIP library directories.
+#
+# Preserve existing LD_LIBRARY_PATH.
+# ============================================================================
+
+prepend_ld_library_path()
+{
+    local dir="$1"
+
+    if [[ -n "${dir}" && -d "${dir}" ]]; then
+        case ":${LD_LIBRARY_PATH:-}:" in
+            *":${dir}:"*) ;;
+            *)
+                export LD_LIBRARY_PATH="${dir}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+                ;;
+        esac
+    fi
+}
+
+
+# Intel runtime
+prepend_ld_library_path "${FLIBROOT}"
+
+# MPI
+if [[ -n "${MPI_HOME:-}" ]]; then
+    prepend_ld_library_path "${MPI_HOME}/lib"
+    prepend_ld_library_path "${MPI_HOME}/lib64"
+fi
+
+# NetCDF Fortran
+prepend_ld_library_path "${NETCDF_F_HOME}/lib"
+
+# NetCDF C
+prepend_ld_library_path "${NETCDF_C_HOME}/lib64"
+
+# HDF5
+if [[ -n "${HDF5_HOME:-}" ]]; then
+    prepend_ld_library_path "${HDF5_HOME}/lib"
+fi
+
+# SZIP
+if [[ -n "${SZIP_HOME:-}" ]]; then
+    prepend_ld_library_path "${SZIP_HOME}/lib"
+fi
+
+
+# ============================================================================
+# Useful checks
+# ============================================================================
+
+echo
+echo "============================================================"
+echo " PSPLINE build environment -- Flux / Intel 2023.2.0"
+echo "============================================================"
+echo
+
+echo "Compilers:"
+echo "  CC              = ${CC}"
+echo "  CXX             = ${CXX}"
+echo "  FC              = ${FC}"
+echo "  F77             = ${F77}"
+echo "  F90             = ${F90}"
+echo
+
+echo "Compiler locations:"
+echo "  CC              = $(command -v "${CC}")"
+echo "  CXX             = $(command -v "${CXX}")"
+echo "  FC              = $(command -v "${FC}")"
+echo "  MPICC           = $(command -v "${MPICC}")"
+echo "  MPIF90          = $(command -v "${MPIF90}")"
+echo
+
+echo "Compiler versions:"
+"${FC}" --version 2>/dev/null | head -1
+"${CC}" --version 2>/dev/null | head -1
+echo
+
+echo "Libraries:"
+echo "  FLIBROOT        = ${FLIBROOT}"
+echo "  NETCDF_F_HOME   = ${NETCDF_F_HOME}"
+echo "  NETCDF_C_HOME   = ${NETCDF_C_HOME}"
+echo "  HDF5_HOME       = ${HDF5_HOME:-not set}"
+echo "  SZIP_HOME       = ${SZIP_HOME:-not set}"
+echo
+
+echo "NetCDF:"
+echo "  NETCDF_FLAGS    = ${NETCDF_FLAGS}"
+echo "  I_NETCDF        = ${I_NETCDF}"
+echo "  L_NETCDF        = ${L_NETCDF}"
+echo
+
+echo "HDF5:"
+echo "  I_HDF5          = ${I_HDF5}"
+echo "  L_HDF5          = ${L_HDF5}"
+echo
+
+echo "SZIP:"
+echo "  I_SZIP          = ${I_SZIP}"
+echo "  L_SZIP          = ${L_SZIP}"
+echo
+
+echo "Compiler flags:"
+echo "  FFLAGS          = ${FFLAGS}"
+echo "  FCFLAGS         = ${FCFLAGS}"
+echo "  CFLAGS          = ${CFLAGS}"
+echo "  CXXFLAGS        = ${CXXFLAGS}"
+echo
+
+echo "Intel runtime:"
+echo "  L_FLIBS         = ${L_FLIBS}"
+echo
+
+echo "============================================================"
