@@ -29,3 +29,24 @@ jobs:
       run: ./pspltest > p.out && diff -w p.out pspline/pspltest.output
     - name: qk_pspline
       run: ./qk_pspline > q.out && diff -w q.out ezspline/qk_pspline.output
+
+  cmake_build_and_test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: configure
+      run: |
+        sudo apt-get update
+        sudo apt-get -y install gfortran cmake libnetcdf-dev libnetcdff-dev
+    - name: cmake
+      run: |
+        cmake -S . -B build \
+          -DPSPLINE_BUILD_SHARED=ON \
+          -DPSPLINE_WITH_NETCDF=ON \
+          -DCMAKE_INSTALL_PREFIX=$PWD/install
+    - name: build
+      run: cmake --build build --parallel 2
+    - name: test
+      run: ctest --test-dir build --output-on-failure
+    - name: install
+      run: cmake --install build

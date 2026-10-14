@@ -1,0 +1,28 @@
+@PACKAGE_INIT@
+
+# Imported targets:
+#
+#   pspline::pspline         the shared library if it was built, else static
+#   pspline::pspline_static  libpspline.a  (if built)
+#   pspline::pspline_shared  libpspline.so (if built)
+
+set(pspline_HAVE_NETCDF @PSPLINE_HAVE_NETCDF@)
+set(pspline_SINGLE_PRECISION @PSPLINE_SINGLE_PRECISION@)
+set(pspline_Fortran_COMPILER_ID "@CMAKE_Fortran_COMPILER_ID@")
+
+include(CMakeFindDependencyMacro)
+if(pspline_HAVE_NETCDF)
+  list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
+  find_dependency(NetCDF_Fortran)
+  list(REMOVE_AT CMAKE_MODULE_PATH 0)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/psplineTargets.cmake")
+
+if(NOT TARGET pspline::pspline)
+  add_library(pspline::pspline INTERFACE IMPORTED)
+  set_target_properties(pspline::pspline PROPERTIES
+    INTERFACE_LINK_LIBRARIES pspline::@PSPLINE_DEFAULT_TARGET@)
+endif()
+
+check_required_components(pspline)

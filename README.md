@@ -50,7 +50,7 @@ transp_support@pppl.gov
 
 ## Contents
 
-GNU Make should be used to build PSPLINE.
+PSPLINE can be built with GNU Make or with CMake (see [Building with CMake](#building-with-cmake)).
 
 The source directories are:
 
@@ -229,6 +229,98 @@ make -f Makefile_Flux MAKE_SO=1 install
 ```
 
 This installs both `libpspline.a` and `libpspline.so`.
+
+
+## Building with CMake
+
+PSPLINE can also be built with CMake (version 3.18 or later). The CMake build
+works alongside the Makefiles and covers the same configurations: GNU,
+Intel (`ifort` and `ifx`) and NVIDIA/PGI compilers, static and shared
+libraries, debug and single-precision builds, with or without NetCDF.
+
+Load the compiler and NetCDF environment as for the Makefiles (for example
+`. config/env_gcc_13.2.0` on Flux), then:
+
+```bash
+cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/path/to/location
+cmake --build build -j 2
+ctest --test-dir build
+cmake --install build
+```
+
+The compilers are taken from `FC` and `CXX` when CMake first configures the
+build directory, or can be given explicitly, e.g.
+`-DCMAKE_Fortran_COMPILER=ifx -DCMAKE_CXX_COMPILER=icpx`. To change compiler,
+use a new build directory.
+
+If `CMAKE_INSTALL_PREFIX` is not given, the `PREFIX` environment variable is
+used when it is set, as with the Makefiles.
+
+### Options
+
+| Option | Default | Makefile equivalent |
+| --- | --- | --- |
+| `PSPLINE_BUILD_STATIC` | `ON` | builds `libpspline.a` |
+| `PSPLINE_BUILD_SHARED` | `OFF` | `make shared`, `MAKE_SO=1` |
+| `PSPLINE_WITH_NETCDF` | `AUTO` | `-D_NETCDF`; `ON` makes NetCDF required, `OFF` disables it |
+| `PSPLINE_SINGLE_PRECISION` | `OFF` | `make single` |
+| `PSPLINE_BUILD_TESTS` | `ON` | the test programs |
+| `PSPLINE_INSTALL_TESTS` | `OFF` | copies the tests to `$PREFIX/test` |
+| `CMAKE_BUILD_TYPE` | `RelWithDebInfo` | `Debug` for `make debug` / `DEBUG=1` |
+
+Both libraries can be built at the same time with
+`-DPSPLINE_BUILD_SHARED=ON`; the objects are then compiled once with
+`-fPIC`. The C interface (CZSPLINE) is double precision only and is left
+out of single-precision builds.
+
+The compiler flags of the Makefiles (default `REAL` of 64 bits, run-time
+checks in `Debug` builds) are set for each compiler. Machine-specific flags
+such as `-march=znver4` can be added with `-DCMAKE_Fortran_FLAGS=...` and
+`-DCMAKE_CXX_FLAGS=...`, or through the `FFLAGS` and `CXXFLAGS` environment
+variables.
+
+### NetCDF
+
+NetCDF-Fortran is found from `NetCDF_Fortran_ROOT`, the `NETCDF_F_HOME`,
+`NETCDF_FORTRAN_HOME`, `NETCDF_MODDIR` and `EBROOTNETCDFMINFORTRAN`
+environment variables, `nf-config`, `pkg-config` or `CMAKE_PREFIX_PATH`. The
+NetCDF C library is located the same way (`NETCDF_C_HOME`, `nc-config`).
+
+### Tests
+
+`ctest` runs the five test programs and compares their output with the
+reference files in the source tree. White space is ignored and numbers
+must agree within a relative tolerance of `1e-5` and an absolute tolerance
+of `1e-12` (`PSPLINE_TEST_RTOL`, `PSPLINE_TEST_ATOL`). This allows for the
+round-off differences between compilers, since the references were
+produced with gfortran. The `ezspline_test` reference is only checked when
+NetCDF is enabled, and the reference outputs are not checked in
+single-precision builds.
+
+### Using PSPLINE from other projects
+
+The installation contains the libraries in `lib/`, and the Fortran module
+files and `czspline_capi.h` in `include/`, as with `make install`. A CMake
+package and a pkg-config file are installed as well.
+
+With CMake:
+
+```cmake
+find_package(pspline REQUIRED)
+target_link_libraries(my_code PRIVATE pspline::pspline)
+```
+
+`pspline::pspline` is the shared library when it was built and the static
+library otherwise; `pspline::pspline_static` and `pspline::pspline_shared`
+select one explicitly. Add the installation prefix to `CMAKE_PREFIX_PATH`
+if it is not a standard location.
+
+With Make and pkg-config:
+
+```bash
+export PKG_CONFIG_PATH=/path/to/location/lib/pkgconfig:$PKG_CONFIG_PATH
+pkg-config --cflags --libs pspline
+```
 
 
 ## Support
